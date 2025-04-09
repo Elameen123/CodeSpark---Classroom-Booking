@@ -17,15 +17,18 @@
 
 body {
     background-color: #f5f5f5;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 .container {
-    width: 900px;
-    height: 600px;
+    width: 100%;
+    max-width: 900px;
+    min-height: 500px;
+    height: auto;
     background-color: var(--white);
     border-radius: 12px;
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
@@ -36,7 +39,7 @@ body {
 .sidebar {
     width: 40%;
     background: linear-gradient(135deg, var(--dark-blue), var(--medium-blue));
-    padding: 40px;
+    padding: 30px;
     color: var(--white);
     display: flex;
     flex-direction: column;
@@ -45,7 +48,7 @@ body {
 .logo-container {
     display: flex;
     align-items: center;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
 }
 
 .logo img {
@@ -80,7 +83,7 @@ body {
 }
 
 .sidebar h1 {
-    font-size: 32px;
+    font-size: 28px;
     margin-bottom: 20px;
 }
 
@@ -92,7 +95,7 @@ body {
 
 .form-container {
     width: 60%;
-    padding: 60px;
+    padding: 40px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -182,4 +185,114 @@ body {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Responsive Breakpoints */
+@media screen and (max-width: 768px) {
+    html, body {
+        height: 100%;
+        width: 100%;
+        overflow-x: hidden;
+    }
+    
+    body {
+        padding: 0;
+        margin: 0;
+    }
+    
+    .container {
+        flex-direction: column;
+        height: 100%;
+        min-height: 100vh;
+        max-width: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    
+    .sidebar {
+        width: 100%;
+        padding: 25px;
+    }
+    
+    .form-container {
+        width: 100%;
+        padding: 30px;
+        flex: 1;
+    }
+    
+    .sidebar-content {
+        padding: 20px 0;
+    }
+}
+
+@media screen and (max-width: 576px) {
+    body {
+        padding: 0;
+    }
+    
+    .container {
+        border-radius: 0;
+    }
+    
+    .sidebar {
+        padding: 20px;
+    }
+    
+    .sidebar h1 {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+    
+    .sidebar p {
+        font-size: 14px;
+    }
+    
+    .logo img {
+        height: 40px;
+    }
+    
+    .app-name {
+        font-size: 20px;
+    }
+    
+    .form-container {
+        padding: 20px;
+    }
+    
+    .input-group label {
+        font-size: 14px;
+    }
+    
+    .input-group input {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .submit-btn {
+        padding: 10px;
+        font-size: 14px;
+    }
+}
+
+@media screen and (max-width: 360px) {
+    .sidebar {
+        padding: 15px;
+    }
+    
+    .form-container {
+        padding: 15px;
+    }
+    
+    .logo-container {
+        margin-bottom: 20px;
+    }
+    
+    .logo img {
+        height: 35px;
+        margin-right: 8px;
+    }
+    
+    .app-name {
+        font-size: 18px;
+    }
 }
