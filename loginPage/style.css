@@ -1,3 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Pacifico&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap');
+        
+
 :root {
     --dark-blue: #0a2463;
     --medium-blue: #3e92cc;
@@ -54,9 +58,19 @@ body {
 }
 
 .app-name {
-    font-size: 24px;
-    font-weight: bold;
+    font-family: 'Pacifico', cursive;
+    font-size: 2rem;
+    color: whitesmoke;
 }
+
+.app_name_differentiate {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.02em;;
+    font-size: 2rem;
+    margin-right: -10px;
+    color: whitesmoke;
+  }
 
 .sidebar-content {
     flex: 1;

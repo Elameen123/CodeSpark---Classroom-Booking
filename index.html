@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookit - Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <header class="header">
+        <a href="#" class="logo">
+            <i class="fas fa-calendar-check"></i>
+             <span class="logo_differentiate">PAU</span>Bookit
+        </a>
+        
+        <div class="user-info">
+            <div class="profile-container">
+                <div class="profile-pic">
+                    <img id="user-avatar" src="/api/placeholder/48/48" alt="Profile">
+                    <button id="change-avatar" class="change-avatar-btn">+</button>
+                </div>
+            </div>
+            Hello, <span id="user-name">John Doe</span> | ID: <span id="user-id">STU12345</span>
+        </div>
+    </header>
+    
+    <div class="dashboard-container">
+        <main class="main-content">
+            <div class="date-picker-container">
+                <h2>Check Classroom Availability</h2>
+                <div class="date-time-selector">
+                    <div class="date-time-input">
+                        <label class="date-time-label" for="date-picker">Date</label>
+                        <input type="text" id="date-picker" class="date-time-field" placeholder="Select date">
+                    </div>
+                    
+                    <div class="date-time-input">
+                        <label class="date-time-label" for="start-time">Start Time</label>
+                        <input type="text" id="start-time" class="date-time-field" placeholder="Select start time">
+                    </div>
+                    
+                    <div class="date-time-input">
+                        <label class="date-time-label" for="end-time">End Time</label>
+                        <input type="text" id="end-time" class="date-time-field" placeholder="Select end time">
+                    </div>
+                    
+                    <div class="date-time-input">
+                        <label class="date-time-label" for="location-filter">Location</label>
+                        <select id="location-filter" class="date-time-field">
+                            <option value="ALL">All Locations</option>
+                            <option value="SST">SST</option>
+                            <option value="TYD">TYD</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="search-availability" class="search-btn">
+                    <i class="fas fa-search"></i> Check Availability
+                </button>
+            </div>
+            
+            <div class="classroom-filter-status" id="filter-status">
+                Showing filtered results for selected date and time
+            </div>
+            
+            <div class="location-title">
+                <h2>Available Classrooms</h2>
+                <span class="location-status">
+                    <i class="fas fa-clock"></i> Showing current availability
+                </span>
+            </div>
+            
+            <div class="classrooms-grid" id="classrooms-container">
+                <!-- Classrooms will be dynamically loaded here -->
+            </div>
+        </main>
+        
+        <aside class="notifications-panel">
+            <h3>Your Reservations</h3>
+            
+            <div class="notification-group">
+                <h4>Pending Approval</h4>
+                <div id="pending-reservations">
+                    <!-- Pending reservations will be added here -->
+                </div>
+            </div>
+            
+            <div class="notification-group">
+                <h4>Approved</h4>
+                <div id="approved-reservations">
+                    <!-- Approved reservations will be added here -->
+                </div>
+            </div>
+            
+            <div class="notification-group">
+                <h4>Denied</h4>
+                <div id="denied-reservations">
+                    <!-- Denied reservations will be added here -->
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <div class="modal" id="reservation-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reserve Classroom</h2>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            
+            <form id="reservation-form">
+                <div class="modal-form-group">
+                    <label class="modal-label" for="classroom-name">Classroom</label>
+                    <input type="text" id="classroom-name" class="modal-input" readonly>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="reservation-date">Date</label>
+                    <input type="text" id="reservation-date" class="modal-input" readonly>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="reservation-time">Time</label>
+                    <input type="text" id="reservation-time" class="modal-input" readonly>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="reservation-purpose">Purpose of Reservation</label>
+                    <textarea id="reservation-purpose" class="modal-textarea" placeholder="Please describe the purpose of your reservation"></textarea>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="reservation-attendees">Expected Number of Attendees</label>
+                    <input type="number" id="reservation-attendees" class="modal-input" min="1" placeholder="Enter number of attendees">
+                </div>
+                
+                <button type="submit" class="reserve-btn">Submit Reservation Request</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Success Alert Popup -->
+    <div id="success-alert" class="alert-popup">
+        <div class="alert-content">
+            <i class="fas fa-check-circle"></i>
+            <p>Reservation request submitted successfully! It is pending approval from Student Affairs. You will be notified once it has been approved.</p>
+        </div>
+    </div>
+    
+    <!-- Avatar Upload Modal -->
+    <div class="modal" id="avatar-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Change Profile Picture</h2>
+                <button class="close-btn" id="close-avatar-modal">&times;</button>
+            </div>
+            
+            <form id="avatar-form">
+                <div class="modal-form-group">
+                    <label class="modal-label" for="avatar-upload">Select Image</label>
+                    <input type="file" id="avatar-upload" class="modal-input" accept="image/*">
+                </div>
+                
+                <button type="submit" class="reserve-btn">Upload</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>
