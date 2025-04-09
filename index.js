@@ -7,38 +7,38 @@ const userData = {
 // Mock classroom data with capacity information
 const classroomData = {
   SST: [
-    { id: 1, name: "SST 101", available: true, capacity: 40 },
-    { id: 2, name: "SST 102", available: false, capacity: 35 },
-    { id: 3, name: "SST 103", available: true, capacity: 25 },
-    { id: 4, name: "SST 104", available: true, capacity: 30 },
-    { id: 5, name: "SST 105", available: false, capacity: 45 },
-    { id: 6, name: "SST 201", available: true, capacity: 60 },
-    { id: 7, name: "SST 202", available: false, capacity: 55 },
-    { id: 8, name: "SST 203", available: true, capacity: 30 }
+    { id: 1, name: "CLASSROOM 1", available: true, capacity: 50 },
+    { id: 2, name: "CLASSROOM 2", available: false, capacity: 50 },
+    { id: 3, name: "CLASSROOM 3", available: true, capacity: 50 },
+    { id: 4, name: "CLASSROOM 4", available: true, capacity: 50 },
+    { id: 5, name: "CLASSROOM 5", available: false, capacity: 50 },
+    { id: 6, name: "SYNDICATE ROOM 1", available: true, capacity: 15 },
+    { id: 7, name: "THERMOFLUID LAB", available: false, capacity: 50 },
+    { id: 8, name: "EDS", available: true, capacity: 100 }
   ],
   TYD: [
-    { id: 9, name: "TYD 101", available: true, capacity: 50 },
-    { id: 10, name: "TYD 102", available: true, capacity: 35 },
-    { id: 11, name: "TYD 103", available: false, capacity: 40 },
-    { id: 12, name: "TYD 104", available: false, capacity: 25 },
-    { id: 13, name: "TYD 201", available: true, capacity: 75 },
-    { id: 14, name: "TYD 202", available: true, capacity: 30 },
-    { id: 15, name: "TYD 203", available: false, capacity: 65 },
-    { id: 16, name: "TYD Hall A", available: true, capacity: 120 }
+    { id: 9, name: "ASABA", available: true, capacity: 50 },
+    { id: 10, name: "ZARIA", available: true, capacity: 35 },
+    { id: 11, name: "IBADAN", available: false, capacity: 40 },
+    { id: 12, name: "MAIDUGURI", available: false, capacity: 25 },
+    { id: 13, name: "ADO EKITI", available: true, capacity: 75 },
+    { id: 14, name: "PORT HARCOURT", available: true, capacity: 75 },
+    { id: 15, name: "EXECUTIVE CAFETERIA", available: false, capacity: 100 },
+    { id: 16, name: "ABUJA", available: true, capacity: 150 }
   ]
 };
 
 // Mock reservation data
 const mockReservations = {
   pending: [
-    { id: 1, classroom: "SST 103", date: "2025-04-10", time: "14:00 - 16:00", purpose: "Group Study Session" },
-    { id: 2, classroom: "TYD 201", date: "2025-04-15", time: "10:00 - 12:00", purpose: "Club Meeting" }
+    { id: 1, classroom: "EDS", date: "2025-04-10", time: "14:00 - 16:00", purpose: "Group Study Session" },
+    { id: 2, classroom: "ASABA", date: "2025-04-15", time: "10:00 - 12:00", purpose: "Club Meeting" }
   ],
   approved: [
-    { id: 3, classroom: "SST 201", date: "2025-04-12", time: "13:00 - 15:00", purpose: "Presentation Practice" }
+    { id: 3, classroom: "CLASSROOM 1", date: "2025-04-12", time: "13:00 - 15:00", purpose: "Presentation Practice" }
   ],
   denied: [
-    { id: 4, classroom: "TYD Hall A", date: "2025-04-08", time: "18:00 - 20:00", purpose: "Event Setup", reason: "Outside regular hours" }
+    { id: 4, classroom: "ABUJA", date: "2025-04-08", time: "18:00 - 20:00", purpose: "Event Setup", reason: "Outside regular hours" }
   ]
 };
 
@@ -172,10 +172,15 @@ function displayAllClassrooms(isFiltered = false) {
     locationHeader.textContent = `${location} Building`;
     classroomsContainer.appendChild(locationHeader);
     
-    // Create container for this location's classrooms
+    // Create container for this location's classrooms (row layout with wrapping)
     const locationClassrooms = document.createElement('div');
     locationClassrooms.className = 'classrooms-grid';
-    locationClassrooms.style.marginBottom = '2rem';
+    Object.assign(locationClassrooms.style, {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '1rem',
+      marginBottom: '2rem'
+    });
     
     // Add classrooms for this location
     classroomData[location].forEach(classroom => {
@@ -206,10 +211,15 @@ function displayClassrooms(location, isFiltered = false) {
   // Clear previous classrooms
   classroomsContainer.innerHTML = '';
   
-  // Add classrooms for selected location
+  // Add classrooms for selected location with wrapping
   const locationClassrooms = document.createElement('div');
   locationClassrooms.className = 'classrooms-grid';
-  
+  Object.assign(locationClassrooms.style, {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '1rem'
+  });
+
   classroomData[location].forEach(classroom => {
     addClassroomCard(classroom, locationClassrooms);
   });
@@ -222,6 +232,12 @@ function addClassroomCard(classroom, container) {
   classroomCard.className = `classroom-card ${classroom.available ? 'available' : 'unavailable'}`;
   classroomCard.dataset.id = classroom.id;
   classroomCard.dataset.name = classroom.name;
+  
+  // Set width to allow for proper wrapping
+  Object.assign(classroomCard.style, {
+    width: '170px',
+    margin: '0.5rem 0'
+  });
   
   // Add classroom name
   const nameElement = document.createElement('div');
@@ -392,6 +408,10 @@ function createReservationElement(reservation, status) {
   const reservationElement = document.createElement('div');
   reservationElement.className = `reservation-notification ${status}`;
   
+  // Create reservation content
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'reservation-content';
+  
   const titleElement = document.createElement('div');
   titleElement.className = 'reservation-title';
   titleElement.textContent = reservation.classroom;
@@ -404,18 +424,84 @@ function createReservationElement(reservation, status) {
   purposeElement.className = 'reservation-purpose';
   purposeElement.textContent = reservation.purpose;
   
-  reservationElement.appendChild(titleElement);
-  reservationElement.appendChild(detailsElement);
-  reservationElement.appendChild(purposeElement);
+  contentWrapper.appendChild(titleElement);
+  contentWrapper.appendChild(detailsElement);
+  contentWrapper.appendChild(purposeElement);
+  
+  reservationElement.appendChild(contentWrapper);
+  
+  // Add action buttons for pending reservations
+  if (status === 'pending') {
+    const actionButtons = document.createElement('div');
+    actionButtons.className = 'reservation-actions';
+    
+    const editButton = document.createElement('button');
+    editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+    editButton.className = 'action-btn edit-btn';
+    editButton.title = 'Edit reservation';
+    editButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Call function to edit reservation
+      editReservation(reservation.id);
+    });
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+    deleteButton.className = 'action-btn delete-btn';
+    deleteButton.title = 'Delete reservation';
+    deleteButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Call function to delete reservation
+      deleteReservation(reservation.id);
+    });
+    
+    actionButtons.appendChild(editButton);
+    actionButtons.appendChild(deleteButton);
+    reservationElement.appendChild(actionButtons);
+  }
   
   if (status === 'denied' && reservation.reason) {
     const reasonElement = document.createElement('div');
     reasonElement.className = 'reservation-reason';
     reasonElement.textContent = `Reason: ${reservation.reason}`;
-    reservationElement.appendChild(reasonElement);
+    contentWrapper.appendChild(reasonElement);
   }
   
   return reservationElement;
+}
+
+function editReservation(id) {
+  // Find the reservation in pending list
+  const reservation = mockReservations.pending.find(res => res.id === id);
+  if (!reservation) return;
+  
+  // Pre-fill the reservation form
+  document.getElementById('classroom-name').value = reservation.classroom;
+  document.getElementById('reservation-date').value = reservation.date;
+  document.getElementById('reservation-time').value = reservation.time;
+  document.getElementById('reservation-purpose').value = reservation.purpose;
+  
+  // Store the editing reservation ID
+  document.getElementById('reservation-form').dataset.editId = id;
+  
+  // Show the modal
+  document.getElementById('reservation-modal').style.display = 'flex';
+  
+  // Change the button text
+  document.querySelector('.reserve-btn').textContent = 'Update Reservation';
+}
+
+function deleteReservation(id) {
+  if (confirm('Are you sure you want to delete this reservation?')) {
+      // Remove the reservation from pending list
+      mockReservations.pending = mockReservations.pending.filter(res => res.id !== id);
+      
+      // Refresh the reservations display
+      loadReservations();
+      
+      // Show notification
+      alert('Reservation deleted successfully');
+  }
 }
 
 function handleAvatarUpload(e) {

@@ -93,13 +93,26 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* Dashboard Container */
+/* Modify .dashboard-container to use grid instead of flex */
 .dashboard-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 70% 30%;
     max-width: 1400px;
     margin: 0 auto;
     gap: 2rem;
     padding: 2rem;
+}
+
+/* Adjust notifications-panel width to fill its container */
+.notifications-panel {
+    width: 100%;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    align-self: flex-start;
+    position: sticky;
+    top: 90px;
 }
 
 .main-content {
@@ -187,12 +200,13 @@ body {
     margin-right: 0.25rem;
 }
 
-.classrooms-grid {
+  
+/* .classrooms-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 1rem;
-    margin-top: 1rem;
-}
+} */
+  
 
 .classroom-card {
     padding: 1.5rem;
@@ -333,18 +347,6 @@ body {
     animation: fadeIn 0.5s;
 }
 
-/* Notifications Panel */
-.notifications-panel {
-    width: 320px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    padding: 1.5rem;
-    align-self: flex-start;
-    position: sticky;
-    top: 90px;
-}
-
 .notifications-panel h3 {
     margin-bottom: 1.5rem;
     color: #333;
@@ -422,6 +424,92 @@ body {
     margin-top: 0.2rem;
 }
 
+.reservation-notification {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.reservation-content {
+    flex: 1;
+}
+
+.reservation-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.recurrent-options {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.recurrent-option {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.25rem;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0.7;
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.action-btn:hover {
+    opacity: 1;
+    background-color: rgba(0,0,0,0.1);
+}
+
+.edit-btn {
+    color: #4a6fdc;
+}
+
+.delete-btn {
+    color: #dc4a4a;
+}
+
+.notifications-bell {
+    position: relative;
+    cursor: pointer;
+    font-size: 1.3rem;
+    margin-right: 1rem;
+    color: #555;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ff3b30;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.user-details {
+    display: none;
+}
+
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
@@ -439,7 +527,7 @@ body {
 
 @media (max-width: 1200px) {
     .dashboard-container {
-        flex-direction: column;
+        grid-template-columns: 1fr;
     }
     
     .notifications-panel {
@@ -450,13 +538,16 @@ body {
 
 @media (max-width: 768px) {
     .header {
-        flex-direction: column;
         padding: 1rem;
     }
     
     .user-info {
-        margin-top: 1rem;
-        flex-direction: column;
+        display: flex;
+        align-items: center;
+    }
+    
+    .user-details {
+        display: none;
     }
     
     .date-time-selector {
@@ -484,4 +575,19 @@ body {
     .dashboard-container {
         padding: 1rem;
     }
+    
+    .reservation-notification {
+        flex-direction: column;
+    }
+    
+    .reservation-actions {
+        margin-top: 0.5rem;
+        align-self: flex-end;
+    }
 }
+
+/* @media (max-width: 400px) {
+    .classroom-card {
+        width: 175px;
+    }
+} */
