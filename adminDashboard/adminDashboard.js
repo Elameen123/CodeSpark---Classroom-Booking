@@ -604,3 +604,217 @@ function truncateText(text, maxLength) {
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Create logout confirmation modal and append to body
+    createLogoutModal();
+    
+    // Add event listener to logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', showLogoutConfirmation);
+    }
+});
+
+// Create logout confirmation modal
+function createLogoutModal() {
+    const modalHTML = `
+        <div class="logout-confirm-modal" id="logout-confirm-modal">
+            <div class="logout-modal-content">
+                <div class="logout-modal-header">
+                    <h3>Confirm Logout</h3>
+                </div>
+                <div class="logout-modal-message">
+                    Are you sure you want to log out?
+                </div>
+                <div class="logout-modal-actions">
+                    <button class="logout-cancel-btn" id="logout-cancel">Cancel</button>
+                    <button class="logout-proceed-btn" id="logout-proceed">Logout</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Append modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Add event listeners to modal buttons
+    document.getElementById('logout-cancel').addEventListener('click', closeLogoutModal);
+    document.getElementById('logout-proceed').addEventListener('click', performLogout);
+}
+
+// Show logout confirmation modal
+function showLogoutConfirmation() {
+    const modal = document.getElementById('logout-confirm-modal');
+    modal.style.display = 'flex';
+}
+
+// Close logout modal
+function closeLogoutModal() {
+    const modal = document.getElementById('logout-confirm-modal');
+    modal.style.display = 'none';
+}
+
+// Perform logout - redirect to login page
+function performLogout() {
+    // You can add any logout logic here, such as clearing session storage
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('userToken');
+    
+    // Show a brief message
+    showAlert('Logging out...');
+    
+    // Redirect to login page after a short delay
+    setTimeout(() => {
+        window.location.href = '/loginPage/login.html'; 
+    }, 1000);
+}
+
+// Show alert message (reusing the existing alert functionality)
+function showAlert(message) {
+    const alertElement = document.getElementById('success-alert');
+    const alertMessage = document.getElementById('alert-message');
+    
+    if (alertElement && alertMessage) {
+        alertMessage.textContent = message;
+        alertElement.classList.add('show');
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            alertElement.classList.remove('show');
+        }, 3000);
+    }
+}
+
+// Add this function to update the recent activity section
+function updateRecentActivity() {
+    // Get the activity list container
+    const activityList = document.querySelector('.activity-list');
+    
+    // Clear existing content
+    activityList.innerHTML = '';
+    
+    // Copy and sort reservations by creation date (most recent first)
+    const sortedReservations = [...reservationsData].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    
+    // Take the 5 most recent activities
+    const recentActivities = sortedReservations.slice(0, 5);
+    
+    // Add each activity to the list
+    recentActivities.forEach(reservation => {
+        let iconClass, actionText;
+        
+        // Determine icon and text based on status
+        if (reservation.status === 'approved') {
+            iconClass = 'approved';
+            actionText = `Reservation #${reservation.id.substring(3)} approved`;
+        } else if (reservation.status === 'denied') {
+            iconClass = 'denied';
+            actionText = `Reservation #${reservation.id.substring(3)} denied`;
+        } else if (reservation.status === 'pending') {
+            iconClass = '';
+            actionText = `New reservation #${reservation.id.substring(3)} pending`;
+        } else if (reservation.status === 'admin') {
+            iconClass = 'created';
+            actionText = `Admin reservation #${reservation.id.substring(3)} created`;
+        }
+        
+        // Calculate time ago
+        const timeAgo = getTimeAgo(new Date(reservation.createdAt));
+        
+        // Create activity item
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.innerHTML = `
+            <div class="activity-icon ${iconClass}">
+                <i class="fas ${getIconByStatus(reservation.status)}"></i>
+            </div>
+            <div class="activity-content">
+                <div class="activity-text">${actionText}</div>
+                <div class="activity-time">${timeAgo}</div>
+            </div>
+        `;
+        
+        activityList.appendChild(activityItem);
+    });
+}
+
+// Helper function to get appropriate icon by status
+function getIconByStatus(status) {
+    switch(status) {
+        case 'approved': return 'fa-check';
+        case 'denied': return 'fa-times';
+        case 'pending': return 'fa-clock';
+        case 'admin': return 'fa-calendar-check';
+        default: return 'fa-user';
+    }
+}
+
+// Helper function to format relative time
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+    
+    if (diffMin < 1) {
+        return 'Just now';
+    } else if (diffMin < 60) {
+        return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
+    } else if (diffHour < 24) {
+        return `${diffHour} hour${diffHour === 1 ? '' : 's'} ago`;
+    } else {
+        return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+    }
+}
+
+// Add this to your existing updateReservationStatus function after updating stats
+function updateReservationStatus(status) {
+    // Existing code...
+    
+    // After this line: updateStats();
+    // Add:
+    updateRecentActivity();
+}
+
+// Add this to your createAdminReservation function after updating stats
+function createAdminReservation() {
+    // Existing code...
+    
+    // After this line: updateStats();
+    // Add:
+    updateRecentActivity();
+}
+
+// Add this to your initial document.addEventListener('DOMContentLoaded', function() {...}
+// Right after calling updateStats();
+function initializePage() {
+    // Initialize date pickers
+    initializeDatePickers();
+    
+    // Fetch and display reservations based on default filters
+    loadReservations();
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Update stats
+    updateStats();
+    
+    // Update recent activity
+    updateRecentActivity();
+}
+
+// Call updateRecentActivity whenever refreshData is called
+function refreshData() {
+    // In a real app, this would fetch fresh data from the server
+    // For now, we'll just reload the current view
+    showAlert('Data refreshed successfully');
+    loadReservations();
+    updateStats();
+    updateRecentActivity();
+}
