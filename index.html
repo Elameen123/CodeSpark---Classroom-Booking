@@ -22,7 +22,7 @@
             </div>
             <div class="profile-container">
                 <div class="profile-pic">
-                    <img id="user-avatar" src="/api/placeholder/48/48" alt="Profile">
+                    <img id="user-avatar" src="profile.jpg" alt="Profile">
                     <button id="change-avatar" class="change-avatar-btn">+</button>
                 </div>
             </div>
@@ -85,6 +85,12 @@
         
         <aside class="notifications-panel">
             <h3>Your Reservations</h3>
+            <div class="notification-group" id="reminder-group">
+                <h4>Reminders</h4>
+                <div id="reminder-notifications">
+                    <!-- Reminders will be added here -->
+                </div>
+            </div>
             
             <div class="notification-group">
                 <h4>Pending Approval</h4>
@@ -169,7 +175,12 @@
     <div id="success-alert" class="alert-popup">
         <div class="alert-content">
             <i class="fas fa-check-circle"></i>
-            <p>Reservation request submitted successfully! It is pending approval from Student Affairs. You will be notified once it has been approved.</p>
+            <div class="alert-message">
+                <p>Reservation request submitted successfully! It is pending approval from Student Affairs. You will be notified once it has been approved.</p>
+                <div class="alert-actions">
+                    <button id="close-alert" class="alert-button">Dismiss</button>
+                </div>
+            </div>
         </div>
     </div>
     
