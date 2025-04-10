@@ -91,6 +91,10 @@ const reservationsData = [
     }
 ];
 
+// Confirmation modal variables
+let confirmAction = null;
+let confirmData = null;
+
 // Initialize flatpickr date pickers
 function initializeDatePickers() {
     flatpickr("#date-filter", {
@@ -99,7 +103,7 @@ function initializeDatePickers() {
         altInput: true,
         altFormat: "F j, Y",
         onChange: function() {
-            document.getElementById('apply-filters').click();
+            // Don't auto-apply filter when date is selected
         }
     });
     
@@ -121,11 +125,12 @@ function initializeDatePickers() {
 
 // Set up event listeners
 function setupEventListeners() {
-    // Filter button click
+    // Filter buttons click
     document.getElementById('apply-filters').addEventListener('click', loadReservations);
+    document.getElementById('clear-filters').addEventListener('click', clearFilters);
     
     // Refresh button click
-    document.getElementById('refresh-btn').addEventListener('click', loadReservations);
+    document.getElementById('refresh-btn').addEventListener('click', refreshData);
     
     // Export button click
     document.getElementById('export-btn').addEventListener('click', exportReservations);
@@ -175,13 +180,43 @@ function setupEventListeners() {
     
     // Approve button click
     document.getElementById('approve-btn').addEventListener('click', function() {
-        updateReservationStatus('approved');
+        showConfirmModal('approve');
     });
     
     // Deny button click
     document.getElementById('deny-btn').addEventListener('click', function() {
-        updateReservationStatus('denied');
+        showConfirmModal('deny');
     });
+    
+    // Confirmation modal event listeners
+    document.getElementById('close-confirm-modal').addEventListener('click', closeConfirmModal);
+    document.getElementById('confirm-cancel').addEventListener('click', closeConfirmModal);
+    document.getElementById('confirm-proceed').addEventListener('click', proceedWithConfirmedAction);
+}
+
+// Refresh data
+function refreshData() {
+    // In a real app, this would fetch fresh data from the server
+    // For now, we'll just reload the current view
+    showAlert('Data refreshed successfully');
+    loadReservations();
+    updateStats();
+}
+
+// Clear all filters and reset to defaults
+function clearFilters() {
+    document.getElementById('status-filter').value = 'pending';
+    document.getElementById('date-filter').value = '';
+    document.getElementById('location-filter').value = 'ALL';
+    
+    // Clear the flatpickr date input
+    const dateInput = document.getElementById('date-filter')._flatpickr;
+    if (dateInput) {
+        dateInput.clear();
+    }
+    
+    // Reload with cleared filters
+    loadReservations();
 }
 
 // Load reservations based on filters
@@ -239,6 +274,49 @@ function loadReservations() {
     }
 }
 
+// Show confirmation modal
+function showConfirmModal(action) {
+    confirmAction = action;
+    confirmData = {
+        reservationId: document.getElementById('reservation-id').value,
+        adminComment: document.getElementById('admin-comment').value
+    };
+    
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmMessage = document.getElementById('confirm-message');
+    const confirmButton = document.getElementById('confirm-proceed');
+    
+    if (action === 'approve') {
+        confirmMessage.textContent = `Are you sure you want to approve reservation ${confirmData.reservationId}?`;
+        confirmButton.textContent = 'Approve';
+        confirmButton.className = 'confirm-proceed-btn approve';
+    } else if (action === 'deny') {
+        confirmMessage.textContent = `Are you sure you want to deny reservation ${confirmData.reservationId}?`;
+        confirmButton.textContent = 'Deny';
+        confirmButton.className = 'confirm-proceed-btn deny';
+    }
+    
+    confirmModal.style.display = 'flex';
+}
+
+// Close confirmation modal
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').style.display = 'none';
+}
+
+// Proceed with confirmed action
+function proceedWithConfirmedAction() {
+    closeConfirmModal();
+    
+    if (confirmAction === 'approve' || confirmAction === 'deny') {
+        updateReservationStatus(confirmAction);
+    }
+    
+    // Reset confirmation variables
+    confirmAction = null;
+    confirmData = null;
+}
+
 // Update the view title based on selected filter
 function updateViewTitle(statusFilter) {
     const titleElement = document.getElementById('current-view-title');
@@ -279,14 +357,6 @@ function addReservationToTable(reservation) {
                 <button class="table-action-btn view-btn" data-id="${reservation.id}" title="View details">
                     <i class="fas fa-eye"></i>
                 </button>
-                ${reservation.status === 'pending' ? `
-                    <button class="table-action-btn approve-table-btn" data-id="${reservation.id}" title="Approve">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="table-action-btn deny-table-btn" data-id="${reservation.id}" title="Deny">
-                        <i class="fas fa-times"></i>
-                    </button>
-                ` : ''}
             </div>
         </td>
     `;
@@ -356,7 +426,7 @@ function updateReservationStatus(status) {
         document.getElementById('review-modal').style.display = 'none';
         
         // Show success alert
-        showAlert(`Reservation ${reservationId} has been ${status}.`);
+        showAlert(`Reservation ${reservationId} has been ${status}d.`);
         
         // Reload reservations and update stats
         loadReservations();
@@ -364,7 +434,7 @@ function updateReservationStatus(status) {
     }
 }
 
-// Create admin reservation
+// Create a new admin reservation
 function createAdminReservation() {
     const classroom = document.getElementById('booking-classroom').value;
     const date = document.getElementById('booking-date').value;
@@ -372,32 +442,34 @@ function createAdminReservation() {
     const purpose = document.getElementById('booking-purpose').value;
     const attendees = document.getElementById('booking-attendees').value;
     
-    // Generate a new reservation ID
-    const newId = 'RES' + (3458 + reservationsData.length + 1);
+    // Generate a new ID
+    const newId = 'RES' + (3458 + Math.floor(Math.random() * 10));
     
-    // Create new reservation object
+    // Create the reservation object
     const newReservation = {
         id: newId,
         studentName: 'Admin User',
         studentId: 'ADMIN01',
-        classroom,
-        date,
-        time,
-        purpose,
+        classroom: classroom,
+        date: date,
+        time: time,
+        purpose: purpose,
         status: 'admin',
         attendees: parseInt(attendees),
         createdAt: new Date().toISOString()
     };
     
-    // Add to reservations data
+    // Add to the reservations data
     reservationsData.push(newReservation);
     
-    // Close the modal and reset form
+    // Close the modal
     document.getElementById('booking-modal').style.display = 'none';
-    document.getElementById('booking-form').reset();
     
     // Show success alert
-    showAlert(`Admin reservation ${newId} has been created successfully.`);
+    showAlert(`Admin reservation ${newId} has been created.`);
+    
+    // Clear the form
+    document.getElementById('booking-form').reset();
     
     // Reload reservations and update stats
     loadReservations();
@@ -406,11 +478,12 @@ function createAdminReservation() {
 
 // Export reservations to CSV
 function exportReservations() {
+    // Get the current filtered reservations
     const statusFilter = document.getElementById('status-filter').value;
     const dateFilter = document.getElementById('date-filter').value;
     const locationFilter = document.getElementById('location-filter').value;
     
-    // Filter reservations the same way as displayed
+    // Filter reservations
     let filteredReservations = reservationsData.filter(reservation => {
         // Status filter
         if (statusFilter !== 'all' && reservation.status !== statusFilter) {
@@ -435,78 +508,99 @@ function exportReservations() {
     
     // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ID,Requestor,Student ID,Classroom,Date,Time,Purpose,Status,Attendees,Admin Comment\n";
     
+    // Add headers
+    csvContent += "ID,Student Name,Student ID,Classroom,Date,Time,Purpose,Status,Attendees,Created At\n";
+    
+    // Add rows
     filteredReservations.forEach(reservation => {
-        csvContent += `${reservation.id},${reservation.studentName},${reservation.studentId},${reservation.classroom},${reservation.date},${reservation.time},"${reservation.purpose}",${reservation.status},${reservation.attendees},"${reservation.adminComment || ''}"\n`;
+        const row = [
+            reservation.id,
+            reservation.studentName,
+            reservation.studentId,
+            reservation.classroom,
+            reservation.date,
+            reservation.time,
+            `"${reservation.purpose.replace(/"/g, '""')}"`,
+            reservation.status,
+            reservation.attendees,
+            reservation.createdAt
+        ].join(',');
+        
+        csvContent += row + "\n";
     });
     
     // Create download link
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `reservations_export_${formatDateForFilename(new Date())}.csv`);
+    link.setAttribute("download", `reservations_export_${formatDateForFileName(new Date())}.csv`);
     document.body.appendChild(link);
     
     // Trigger download
     link.click();
     
-    // Clean up
+    // Remove link
     document.body.removeChild(link);
+    
+    // Show success alert
+    showAlert('Reservations exported to CSV successfully');
 }
 
-// Update statistics counters
+// Format date for file names
+function formatDateForFileName(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Update stats
 function updateStats() {
     const pendingCount = reservationsData.filter(r => r.status === 'pending').length;
     const approvedCount = reservationsData.filter(r => r.status === 'approved').length;
     const deniedCount = reservationsData.filter(r => r.status === 'denied').length;
-    const adminCount = reservationsData.filter(r => r.status === 'admin').length;
     const totalCount = reservationsData.length;
     
     document.getElementById('pending-count').textContent = pendingCount;
     document.getElementById('approved-count').textContent = approvedCount;
     document.getElementById('denied-count').textContent = deniedCount;
     document.getElementById('total-count').textContent = totalCount;
-    
-    // Update notification badge
     document.getElementById('notification-count').textContent = pendingCount;
 }
 
-// Show alert popup
+// Show alert
 function showAlert(message) {
     const alertElement = document.getElementById('success-alert');
-    const messageElement = document.getElementById('alert-message');
+    const alertMessage = document.getElementById('alert-message');
     
-    messageElement.textContent = message;
+    alertMessage.textContent = message;
     alertElement.classList.add('show');
     
-    // Hide after 3 seconds
+    // Auto-hide after 5 seconds
     setTimeout(() => {
         alertElement.classList.remove('show');
-    }, 3000);
+    }, 5000);
 }
 
-// Helper function to truncate text
+// Format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+// Truncate text and add ellipsis if needed
 function truncateText(text, maxLength) {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
 }
 
-// Helper function to capitalize first letter
+// Capitalize first letter
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-// Helper function to format date
-function formatDate(dateString) {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-}
-
-// Helper function to format date for filename
-function formatDateForFilename(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
 }
