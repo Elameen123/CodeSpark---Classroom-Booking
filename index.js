@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // Clear logged in user
           localStorage.removeItem('loggedInUser');
           // Redirect to login page
-          window.location.href = './LoginPage/login.html';
+          window.location.href = './loginPage/login.html';
       });
       
       dropdown.appendChild(logoutOption);
