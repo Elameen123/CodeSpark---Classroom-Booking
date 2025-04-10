@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookit - Admin Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="adminDashboard.css">
+</head>
+<body>
+    <header class="header">
+        <a href="#" class="logo">
+            <i class="fas fa-calendar-check"></i>
+             <span class="logo_differentiate">PAU</span>Bookit <span class="admin-badge">Admin</span>
+        </a>
+        
+        <div class="user-info">
+            <div class="notifications-bell">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="notification-count">5</span>
+            </div>
+            <div class="user-details">
+                Hello, <span id="user-name">Admin User</span> | Role: <span id="user-id">Administrator</span>
+            </div>
+        </div>
+    </header>
+    
+    <div class="dashboard-container">
+        <main class="main-content">
+            <div class="control-panel">
+                <div class="panel-header">
+                    <h2>Reservation Management</h2>
+                    <button id="create-reservation-btn" class="create-btn">
+                        <i class="fas fa-plus"></i> Create Reservation
+                    </button>
+                </div>
+                
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="status-filter">Filter by Status</label>
+                        <select id="status-filter" class="filter-input">
+                            <option value="all">All Requests</option>
+                            <option value="pending" selected>Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="denied">Denied</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="date-filter">Filter by Date</label>
+                        <input type="text" id="date-filter" class="filter-input" placeholder="Select date">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="location-filter">Filter by Location</label>
+                        <select id="location-filter" class="filter-input">
+                            <option value="ALL">All Locations</option>
+                            <option value="SST">SST</option>
+                            <option value="TYD">TYD</option>
+                        </select>
+                    </div>
+                    
+                    <button id="apply-filters" class="filter-btn">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+            
+            <div class="reservation-stats">
+                <div class="stat-card pending">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="pending-count">5</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card approved">
+                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="approved-count">12</div>
+                        <div class="stat-label">Approved</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card denied">
+                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="denied-count">3</div>
+                        <div class="stat-label">Denied</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card total">
+                    <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="total-count">20</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="reservations-section">
+                <div class="section-header">
+                    <h2 id="current-view-title">Pending Reservations</h2>
+                    <div class="section-actions">
+                        <button id="refresh-btn" class="action-button">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button id="export-btn" class="action-button">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="reservations-table-container">
+                    <table class="reservations-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Requestor</th>
+                                <th>Classroom</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Purpose</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reservations-list">
+                            <!-- Reservations will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        
+        <aside class="admin-panel">
+            <div class="admin-section">
+                <h3>Recent Activity</h3>
+                <div class="activity-list">
+                    <div class="activity-item">
+                        <div class="activity-icon approved"><i class="fas fa-check"></i></div>
+                        <div class="activity-content">
+                            <div class="activity-text">Reservation #3456 approved</div>
+                            <div class="activity-time">10 minutes ago</div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon denied"><i class="fas fa-times"></i></div>
+                        <div class="activity-content">
+                            <div class="activity-text">Reservation #3452 denied</div>
+                            <div class="activity-time">25 minutes ago</div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon"><i class="fas fa-user"></i></div>
+                        <div class="activity-content">
+                            <div class="activity-text">Admin login from 192.168.1.45</div>
+                            <div class="activity-time">1 hour ago</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <!-- Review Modal -->
+    <div class="modal" id="review-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Review Reservation</h2>
+                <button class="close-btn" id="close-review-modal">&times;</button>
+            </div>
+            
+            <form id="review-form">
+                <input type="hidden" id="reservation-id">
+                
+                <div class="modal-info-group">
+                    <div class="info-item">
+                        <span class="info-label">Student:</span>
+                        <span id="student-name" class="info-value">Alex Johnson</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Student ID:</span>
+                        <span id="student-id" class="info-value">STU78912</span>
+                    </div>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="review-classroom">Classroom</label>
+                    <input type="text" id="review-classroom" class="modal-input" readonly>
+                </div>
+                
+                <div class="modal-info-group two-columns">
+                    <div class="modal-form-group">
+                        <label class="modal-label" for="review-date">Date</label>
+                        <input type="text" id="review-date" class="modal-input" readonly>
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label class="modal-label" for="review-time">Time</label>
+                        <input type="text" id="review-time" class="modal-input" readonly>
+                    </div>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="review-purpose">Purpose of Reservation</label>
+                    <textarea id="review-purpose" class="modal-textarea" readonly></textarea>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="review-attendees">Expected Number of Attendees</label>
+                    <input type="number" id="review-attendees" class="modal-input" readonly>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="admin-comment">Admin Comment</label>
+                    <textarea id="admin-comment" class="modal-textarea" placeholder="Add any comments or reason for approval/denial"></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" id="deny-btn" class="deny-btn">
+                        <i class="fas fa-times"></i> Deny
+                    </button>
+                    <button type="button" id="approve-btn" class="approve-btn">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Admin Booking Modal -->
+    <div class="modal" id="booking-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Reservation</h2>
+                <button class="close-btn" id="close-booking-modal">&times;</button>
+            </div>
+            
+            <form id="booking-form">
+                <div class="modal-form-group">
+                    <label class="modal-label" for="booking-classroom">Classroom</label>
+                    <select id="booking-classroom" class="modal-input" required>
+                        <option value="">Select a classroom</option>
+                        <option value="SST 104">SST 104</option>
+                        <option value="SST 110">SST 110</option>
+                        <option value="SST 220">SST 220</option>
+                        <option value="TYD 201">TYD 201</option>
+                        <option value="TYD 305">TYD 305</option>
+                    </select>
+                </div>
+                
+                <div class="modal-info-group two-columns">
+                    <div class="modal-form-group">
+                        <label class="modal-label" for="booking-date">Date</label>
+                        <input type="text" id="booking-date" class="modal-input" placeholder="Select date" required>
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label class="modal-label" for="booking-time">Time</label>
+                        <select id="booking-time" class="modal-input" required>
+                            <option value="">Select time</option>
+                            <option value="08:00 - 10:00">08:00 - 10:00</option>
+                            <option value="10:00 - 12:00">10:00 - 12:00</option>
+                            <option value="12:00 - 14:00">12:00 - 14:00</option>
+                            <option value="14:00 - 16:00">14:00 - 16:00</option>
+                            <option value="16:00 - 18:00">16:00 - 18:00</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="booking-purpose">Purpose of Reservation</label>
+                    <textarea id="booking-purpose" class="modal-textarea" placeholder="Describe the purpose of this reservation" required></textarea>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label class="modal-label" for="booking-attendees">Expected Number of Attendees</label>
+                    <input type="number" id="booking-attendees" class="modal-input" min="1" required>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" id="cancel-booking-btn" class="deny-btn">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" id="confirm-booking-btn" class="approve-btn">
+                        <i class="fas fa-check"></i> Confirm Booking
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Success Alert Popup -->
+    <div id="success-alert" class="alert-popup">
+        <div class="alert-content">
+            <i class="fas fa-check-circle"></i>
+            <p id="alert-message">Reservation has been successfully processed!</p>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <script src="adminDashboard.js"></script>
+</body>
+</html>

@@ -178,7 +178,7 @@ function handleLogin(e) {
         
         // Redirect to dashboard after a short delay
         setTimeout(() => {
-            window.location.href = '../index.html';
+            window.location.href = '../adminDashboard/adminDashboard.html'
         }, 1500);
     } else {
         // Hide loading spinner
