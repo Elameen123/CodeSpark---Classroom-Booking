@@ -115,6 +115,39 @@ body {
     top: 90px;
 }
 
+.alert-message {
+    flex: 1;
+}
+
+.alert-actions {
+    margin-top: 1rem;
+    text-align: right;
+}
+
+.alert-button {
+    background-color: #4a6fdc;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.alert-button:hover {
+    background-color: #3a5db8;
+}
+
+.recurrent-badge {
+    background-color: #4cd964;
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 10px;
+    margin-left: 0.25rem;
+    display: inline-block;
+}
+
 .main-content {
     flex: 1;
     max-width: 900px;
@@ -507,8 +540,28 @@ body {
 }
 
 .user-details {
-    display: none;
+    display: flex;
 }
+
+.reminder-alert {
+    background-color: #e3f2fd;
+    color: #4a6fdc;
+  }
+  
+  .reminder-alert i {
+    color: #4a6fdc;
+  }
+  
+  /* Modify alert-popup to allow stacking */
+  .alert-popup {
+    z-index: calc(1001 + var(--stacking-index, 0));
+    bottom: 30px;
+  }
+
+  .reservation-notification.reminder {
+    background-color: #e3f2fd;
+    color: #4a6fdc;
+  }
 
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
@@ -536,6 +589,7 @@ body {
     }
 }
 
+/* Update the modal-content width for mobile view */
 @media (max-width: 768px) {
     .header {
         padding: 1rem;
@@ -559,7 +613,7 @@ body {
     }
     
     .modal-content {
-        width: 90%;
+        width: 80%;
         padding: 1.5rem;
     }
     
@@ -586,8 +640,30 @@ body {
     }
 }
 
-/* @media (max-width: 400px) {
+/* Add styles to ensure two cards per row on mobile */
+@media (max-width: 768px) {
     .classroom-card {
-        width: 175px;
+        width: calc(50% - 0.5rem);
+        flex-basis: calc(50% - 0.5rem);
     }
-} */
+    
+    .classrooms-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: space-between;
+    }
+}
+
+/* For very small screens, ensure the cards still look good */
+@media (max-width: 350px) {
+    .classroom-card {
+        width: calc(45% - 0.25rem);
+        flex-basis: calc(45% - 0.25rem);
+        padding: 1rem;
+    }
+    
+    .classrooms-grid {
+        gap: 0.5rem;
+    }
+}

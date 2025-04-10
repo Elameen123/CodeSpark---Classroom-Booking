@@ -1,3 +1,5 @@
+
+
 // Mock user data
 const userData = {
   name: "Alex Johnson",
@@ -43,9 +45,76 @@ const mockReservations = {
 };
 
 // Set user information
+// Authentication check - Add at the very beginning of the file
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('user-name').textContent = userData.name;
-  document.getElementById('user-id').textContent = userData.id;
+  // Check if user is logged in
+  const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+  if (!loggedInUser) {
+      // User is not logged in, redirect to login page
+      window.location.href = './loginPage/login.html';
+      return;
+  }
+  
+  // Update user information in the header
+  document.getElementById('user-name').textContent = loggedInUser.name;
+  document.getElementById('user-id').textContent = loggedInUser.id;
+  
+  // Add logout functionality
+  const profilePic = document.querySelector('.profile-pic');
+  if (profilePic) {
+      // Create a dropdown menu for user profile
+      const dropdown = document.createElement('div');
+      dropdown.className = 'profile-dropdown';
+      dropdown.style.display = 'none';
+      dropdown.style.position = 'absolute';
+      dropdown.style.top = '100%';
+      dropdown.style.right = '0';
+      dropdown.style.backgroundColor = 'white';
+      dropdown.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+      dropdown.style.borderRadius = '4px';
+      dropdown.style.padding = '0.5rem 0';
+      dropdown.style.zIndex = '200';
+      dropdown.style.minWidth = '150px';
+      
+      // Add logout option
+      const logoutOption = document.createElement('div');
+      logoutOption.textContent = 'Logout';
+      logoutOption.style.padding = '0.5rem 1rem';
+      logoutOption.style.cursor = 'pointer';
+      logoutOption.style.transition = 'background-color 0.2s';
+      
+      logoutOption.addEventListener('mouseenter', () => {
+          logoutOption.style.backgroundColor = '#f5f5f5';
+      });
+      
+      logoutOption.addEventListener('mouseleave', () => {
+          logoutOption.style.backgroundColor = 'transparent';
+      });
+      
+      logoutOption.addEventListener('click', () => {
+          // Clear logged in user
+          localStorage.removeItem('loggedInUser');
+          // Redirect to login page
+          window.location.href = './LoginPage/login.html';
+      });
+      
+      dropdown.appendChild(logoutOption);
+      
+      // Add dropdown to profile container
+      const profileContainer = document.querySelector('.profile-container');
+      profileContainer.appendChild(dropdown);
+      
+      // Toggle dropdown on profile click
+      profilePic.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      });
+      
+      // Close dropdown when clicking elsewhere
+      document.addEventListener('click', () => {
+          dropdown.style.display = 'none';
+      });
+  }
   
   // Initialize date and time pickers
   initializeDateTimePickers();
@@ -58,6 +127,15 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Set up event listeners
   setupEventListeners();
+  
+  // Initialize notification count
+  updateNotificationCount();
+  
+  // Check for reminders on load
+  checkRecurrentReminders();
+  
+  // Check every minute (in a real app, this would be more sophisticated)
+  setInterval(checkRecurrentReminders, 60000);
 });
 
 function initializeDateTimePickers() {
@@ -326,28 +404,82 @@ function handleReservationSubmit(e) {
     return;
   }
   
+  // Get recurrent selection
+  const recurrentOption = document.querySelector('input[name="recurrent"]:checked').value;
+  
+  // Check if we're editing or creating new
+  const editId = this.dataset.editId;
+  
+  if (editId) {
+    // Update existing reservation
+    const index = mockReservations.pending.findIndex(res => res.id === parseInt(editId));
+    if (index !== -1) {
+      mockReservations.pending[index] = {
+        ...mockReservations.pending[index],
+        classroom: document.getElementById('classroom-name').value,
+        date: document.getElementById('reservation-date').value,
+        time: document.getElementById('reservation-time').value,
+        purpose: purpose,
+        recurrent: recurrentOption !== 'none' ? recurrentOption : null
+      };
+      
+      // Reset edit mode
+      this.dataset.editId = '';
+      document.querySelector('.reserve-btn').textContent = 'Submit Reservation Request';
+    }
+  } else {
+    // Add new reservation
+    const newReservation = {
+      id: Date.now(),
+      classroom: document.getElementById('classroom-name').value,
+      date: document.getElementById('reservation-date').value,
+      time: document.getElementById('reservation-time').value,
+      purpose: purpose,
+      recurrent: recurrentOption !== 'none' ? recurrentOption : null
+    };
+    
+    mockReservations.pending.push(newReservation);
+    
+    // Update notification count
+    updateNotificationCount();
+  }
+  
   // Hide modal
   document.getElementById('reservation-modal').style.display = 'none';
   
   // Show success alert
   showSuccessAlert();
   
-  // Add to pending reservations (in a real app, this would be sent to the server)
-  const newReservation = {
-    id: Date.now(),
-    classroom: document.getElementById('classroom-name').value,
-    date: document.getElementById('reservation-date').value,
-    time: document.getElementById('reservation-time').value,
-    purpose: purpose
-  };
-  
-  mockReservations.pending.push(newReservation);
-  loadReservations(); // Refresh the reservations display
+  // Refresh reservations
+  loadReservations();
   
   // Reset form
   document.getElementById('reservation-purpose').value = '';
   document.getElementById('reservation-attendees').value = '';
+  document.querySelector('input[name="recurrent"][value="none"]').checked = true;
 }
+
+function updateNotificationCount() {
+  const notificationCount = document.getElementById('notification-count');
+  const count = mockReservations.pending.length + mockReservations.approved.length;
+  
+  notificationCount.textContent = count;
+  
+  // Hide badge if no notifications
+  if (count === 0) {
+    notificationCount.style.display = 'none';
+  } else {
+    notificationCount.style.display = 'flex';
+  }
+}
+
+// Call this in DOMContentLoaded event
+document.addEventListener('DOMContentLoaded', () => {
+  // ...existing code...
+  
+  // Initialize notification count
+  updateNotificationCount();
+});
 
 function showSuccessAlert() {
   const successAlert = document.getElementById('success-alert');
@@ -362,6 +494,16 @@ function showSuccessAlert() {
     }, 500);
   }, 20000);
 }
+
+// Add this to setupEventListeners function
+document.getElementById('close-alert').addEventListener('click', () => {
+  const successAlert = document.getElementById('success-alert');
+  successAlert.style.animation = 'slideOut 0.5s forwards';
+  setTimeout(() => {
+    successAlert.style.display = 'none';
+    successAlert.style.animation = 'slideIn 0.5s';
+  }, 500);
+});
 
 function loadReservations() {
   // Load pending reservations
@@ -402,6 +544,32 @@ function loadReservations() {
       deniedContainer.appendChild(reservationElement);
     });
   }
+
+  // Load reminders
+  const reminderContainer = document.getElementById('reminder-notifications');
+  reminderContainer.innerHTML = '';
+  
+  if (!mockReservations.reminders || mockReservations.reminders.length === 0) {
+    reminderContainer.innerHTML = '<p>No upcoming reminders</p>';
+  } else {
+    mockReservations.reminders.forEach(reminder => {
+      const reminderElement = document.createElement('div');
+      reminderElement.className = 'reservation-notification reminder';
+      
+      reminderElement.innerHTML = `
+        <div class="reservation-content">
+          <div class="reservation-title">${reminder.classroom}</div>
+          <div class="reservation-details">${reminder.date} | ${reminder.time}</div>
+          <div class="reservation-purpose">${reminder.purpose}</div>
+        </div>
+      `;
+      
+      reminderContainer.appendChild(reminderElement);
+    });
+  }
+  
+  // Update notification count to include all types
+  updateNotificationCount();
 }
 
 function createReservationElement(reservation, status) {
@@ -467,7 +635,17 @@ function createReservationElement(reservation, status) {
     contentWrapper.appendChild(reasonElement);
   }
   
+  // Add recurrent label if applicable
+  if (reservation.recurrent) {
+    const recurrentBadge = document.createElement('span');
+    recurrentBadge.className = 'recurrent-badge';
+    recurrentBadge.textContent = `${reservation.recurrent.charAt(0).toUpperCase() + reservation.recurrent.slice(1)}`;
+    detailsElement.appendChild(document.createTextNode(' | '));
+    detailsElement.appendChild(recurrentBadge);
+  }
+  
   return reservationElement;
+
 }
 
 function editReservation(id) {
@@ -532,3 +710,101 @@ function handleAvatarUpload(e) {
   // Show success message
   alert('Profile picture updated successfully!');
 }
+
+// Add this to index.js
+function checkRecurrentReminders() {
+  const today = new Date();
+  const formattedToday = today.toISOString().split('T')[0];
+  
+  // Check approved recurrent reservations
+  mockReservations.approved.forEach(reservation => {
+    if (reservation.recurrent) {
+      // For demo purposes, we'll create a reminder for any recurrent reservation
+      // In a real app, you'd calculate the next occurrence based on the recurrence pattern
+      
+      const reminderNotification = {
+        id: Date.now(),
+        type: 'reminder',
+        classroom: reservation.classroom,
+        date: reservation.date,
+        time: reservation.time,
+        purpose: reservation.purpose,
+        recurrent: reservation.recurrent
+      };
+      
+      // Add to a new reminders section (we'll create this)
+      if (!mockReservations.reminders) {
+        mockReservations.reminders = [];
+      }
+      
+      // Only add if not already there
+      if (!mockReservations.reminders.some(r => r.classroom === reservation.classroom && 
+                                           r.date === reservation.date && 
+                                           r.time === reservation.time)) {
+        mockReservations.reminders.push(reminderNotification);
+        
+        // Update notification count
+        updateNotificationCount();
+        
+        // Show reminder alert
+        showReminderAlert(reminderNotification);
+      }
+    }
+  });
+}
+
+function showReminderAlert(reminder) {
+  // Create a reminder alert
+  const alertDiv = document.createElement('div');
+  alertDiv.className = 'alert-popup reminder-alert';
+  alertDiv.style.display = 'block';
+  
+  const content = document.createElement('div');
+  content.className = 'alert-content';
+  
+  content.innerHTML = `
+    <i class="fas fa-bell"></i>
+    <div class="alert-message">
+      <p><strong>Reminder:</strong> Your recurring reservation for ${reminder.classroom} is coming up on ${reminder.date} at ${reminder.time}</p>
+      <div class="alert-actions">
+        <button class="alert-button dismiss-reminder">Dismiss</button>
+      </div>
+    </div>
+  `;
+  
+  alertDiv.appendChild(content);
+  document.body.appendChild(alertDiv);
+  
+  // Position it above the success alert if that's visible
+  const successAlert = document.getElementById('success-alert');
+  if (successAlert.style.display === 'block') {
+    alertDiv.style.bottom = '120px';
+  }
+  
+  // Add dismiss handler
+  alertDiv.querySelector('.dismiss-reminder').addEventListener('click', () => {
+    alertDiv.style.animation = 'slideOut 0.5s forwards';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 500);
+  });
+  
+  // Auto dismiss after 30 seconds
+  setTimeout(() => {
+    alertDiv.style.animation = 'slideOut 0.5s forwards';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 500);
+  }, 30000);
+}
+
+// Call this function on page load and periodically
+document.addEventListener('DOMContentLoaded', () => {
+  // ...existing code...
+  
+  // Check for reminders on load
+  checkRecurrentReminders();
+  
+  // Check every minute (in a real app, this would be more sophisticated)
+  setInterval(checkRecurrentReminders, 60000);
+});
