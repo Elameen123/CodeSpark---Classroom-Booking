@@ -1,48 +1,10 @@
+// Add this near the beginning of your DOMContentLoaded event
+initializeSharedStorage();
 
-
-// Mock user data
-const userData = {
-  name: "Alex Johnson",
-  id: "STU78912"
-};
-
-// Mock classroom data with capacity information
-const classroomData = {
-  SST: [
-    { id: 1, name: "CLASSROOM 1", available: true, capacity: 50 },
-    { id: 2, name: "CLASSROOM 2", available: false, capacity: 50 },
-    { id: 3, name: "CLASSROOM 3", available: true, capacity: 50 },
-    { id: 4, name: "CLASSROOM 4", available: true, capacity: 50 },
-    { id: 5, name: "CLASSROOM 5", available: false, capacity: 50 },
-    { id: 6, name: "SYNDICATE ROOM 1", available: true, capacity: 15 },
-    { id: 7, name: "THERMOFLUID LAB", available: false, capacity: 50 },
-    { id: 8, name: "EDS", available: true, capacity: 100 }
-  ],
-  TYD: [
-    { id: 9, name: "ASABA", available: true, capacity: 50 },
-    { id: 10, name: "ZARIA", available: true, capacity: 35 },
-    { id: 11, name: "IBADAN", available: false, capacity: 40 },
-    { id: 12, name: "MAIDUGURI", available: false, capacity: 25 },
-    { id: 13, name: "ADO EKITI", available: true, capacity: 75 },
-    { id: 14, name: "PORT HARCOURT", available: true, capacity: 75 },
-    { id: 15, name: "EXECUTIVE CAFETERIA", available: false, capacity: 100 },
-    { id: 16, name: "ABUJA", available: true, capacity: 150 }
-  ]
-};
-
-// Mock reservation data
-const mockReservations = {
-  pending: [
-    { id: 1, classroom: "EDS", date: "2025-04-10", time: "14:00 - 16:00", purpose: "Group Study Session" },
-    { id: 2, classroom: "ASABA", date: "2025-04-15", time: "10:00 - 12:00", purpose: "Club Meeting" }
-  ],
-  approved: [
-    { id: 3, classroom: "CLASSROOM 1", date: "2025-04-12", time: "13:00 - 15:00", purpose: "Presentation Practice" }
-  ],
-  denied: [
-    { id: 4, classroom: "ABUJA", date: "2025-04-08", time: "18:00 - 20:00", purpose: "Event Setup", reason: "Outside regular hours" }
-  ]
-};
+// Helper function to get classroom data from localStorage
+function getClassroomData() {
+  return JSON.parse(localStorage.getItem('classroomData'));
+}
 
 // Set user information
 // Authentication check - Add at the very beginning of the file
@@ -217,9 +179,10 @@ function setupEventListeners() {
 }
 
 function displayAllClassrooms(isFiltered = false) {
+  const classroomData = getClassroomData();
   const classroomsContainer = document.getElementById('classrooms-container');
   classroomsContainer.innerHTML = '';
-  
+
   // Display location title
   document.querySelector('.location-title h2').textContent = 'Available Classrooms';
   
@@ -270,6 +233,7 @@ function displayAllClassrooms(isFiltered = false) {
 }
 
 function displayClassrooms(location, isFiltered = false) {
+  const classroomData = getClassroomData();
   const classroomsContainer = document.getElementById('classrooms-container');
   const filterStatus = document.getElementById('filter-status');
   const locationStatus = document.querySelector('.location-status');
@@ -393,6 +357,13 @@ function openReservationModal(classroom) {
   document.getElementById('reservation-modal').style.display = 'flex';
 }
 
+
+// Replace the mockReservations with a function that gets data from localStorage
+function getReservations() {
+  return JSON.parse(localStorage.getItem('classroomReservations'));
+}
+
+// Replace the handleReservationSubmit function with this updated version
 function handleReservationSubmit(e) {
   e.preventDefault();
   
@@ -404,23 +375,29 @@ function handleReservationSubmit(e) {
     return;
   }
   
-  // Get recurrent selection
+  // Get the logged in user info
+  const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
   const recurrentOption = document.querySelector('input[name="recurrent"]:checked').value;
+  
+  // Get current reservations
+  const reservations = getReservations();
   
   // Check if we're editing or creating new
   const editId = this.dataset.editId;
   
   if (editId) {
     // Update existing reservation
-    const index = mockReservations.pending.findIndex(res => res.id === parseInt(editId));
+    const index = reservations.pending.findIndex(res => res.id === parseInt(editId));
     if (index !== -1) {
-      mockReservations.pending[index] = {
-        ...mockReservations.pending[index],
+      reservations.pending[index] = {
+        ...reservations.pending[index],
         classroom: document.getElementById('classroom-name').value,
         date: document.getElementById('reservation-date').value,
         time: document.getElementById('reservation-time').value,
         purpose: purpose,
-        recurrent: recurrentOption !== 'none' ? recurrentOption : null
+        attendees: parseInt(attendees),
+        recurrent: recurrentOption !== 'none' ? recurrentOption : null,
+        lastUpdated: new Date().getTime()
       };
       
       // Reset edit mode
@@ -428,21 +405,31 @@ function handleReservationSubmit(e) {
       document.querySelector('.reserve-btn').textContent = 'Submit Reservation Request';
     }
   } else {
-    // Add new reservation
+    // Create new reservation with unique ID
     const newReservation = {
-      id: Date.now(),
+      id: 'RES' + Date.now(),
+      studentName: loggedInUser.name,
+      studentId: loggedInUser.id,
+      email: loggedInUser.email,
       classroom: document.getElementById('classroom-name').value,
       date: document.getElementById('reservation-date').value,
       time: document.getElementById('reservation-time').value,
       purpose: purpose,
-      recurrent: recurrentOption !== 'none' ? recurrentOption : null
+      attendees: parseInt(attendees),
+      status: 'pending',
+      recurrent: recurrentOption !== 'none' ? recurrentOption : null,
+      createdAt: new Date().toISOString()
     };
     
-    mockReservations.pending.push(newReservation);
-    
-    // Update notification count
-    updateNotificationCount();
+    // Add to reservations data
+    reservations.pending.push(newReservation);
   }
+  
+  // Update last update timestamp
+  reservations.lastUpdate = new Date().getTime();
+  
+  // Save back to localStorage
+  localStorage.setItem('classroomReservations', JSON.stringify(reservations));
   
   // Hide modal
   document.getElementById('reservation-modal').style.display = 'none';
@@ -459,9 +446,79 @@ function handleReservationSubmit(e) {
   document.querySelector('input[name="recurrent"][value="none"]').checked = true;
 }
 
+// Update the loadReservations function to use localStorage
+function loadReservations() {
+  // Get updated reservations data from localStorage
+  const reservationsData = getReservations();
+  
+  // Load pending reservations
+  const pendingContainer = document.getElementById('pending-reservations');
+  pendingContainer.innerHTML = '';
+  
+  if (reservationsData.pending.length === 0) {
+    pendingContainer.innerHTML = '<p>No pending reservations</p>';
+  } else {
+    reservationsData.pending.forEach(reservation => {
+      // Only show reservations for the current user
+      const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+      if (reservation.studentId === loggedInUser.id) {
+        const reservationElement = createReservationElement(reservation, 'pending');
+        pendingContainer.appendChild(reservationElement);
+      }
+    });
+  }
+  
+  // Load approved reservations
+  const approvedContainer = document.getElementById('approved-reservations');
+  approvedContainer.innerHTML = '';
+  
+  if (reservationsData.approved.length === 0) {
+    approvedContainer.innerHTML = '<p>No approved reservations</p>';
+  } else {
+    reservationsData.approved.forEach(reservation => {
+      // Only show reservations for the current user
+      const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+      if (reservation.studentId === loggedInUser.id) {
+        const reservationElement = createReservationElement(reservation, 'approved');
+        approvedContainer.appendChild(reservationElement);
+      }
+    });
+  }
+  
+  // Load denied reservations
+  const deniedContainer = document.getElementById('denied-reservations');
+  deniedContainer.innerHTML = '';
+  
+  if (reservationsData.denied.length === 0) {
+    deniedContainer.innerHTML = '<p>No denied reservations</p>';
+  } else {
+    reservationsData.denied.forEach(reservation => {
+      // Only show reservations for the current user
+      const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+      if (reservation.studentId === loggedInUser.id) {
+        const reservationElement = createReservationElement(reservation, 'denied');
+        deniedContainer.appendChild(reservationElement);
+      }
+    });
+  }
+
+  // Update notification count
+  updateNotificationCount();
+}
+
+// Update notification count to use localStorage
 function updateNotificationCount() {
+  const reservationsData = getReservations();
+  const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+  
   const notificationCount = document.getElementById('notification-count');
-  const count = mockReservations.pending.length + mockReservations.approved.length;
+  
+  // Only count notifications relevant to this user
+  const pendingCount = reservationsData.pending.filter(res => res.studentId === loggedInUser.id).length;
+  const approvedCount = reservationsData.approved.filter(res => res.studentId === loggedInUser.id).length;
+  const deniedCount = reservationsData.denied.filter(res => res.studentId === loggedInUser.id).length;
+  
+  const count = pendingCount + approvedCount + deniedCount;
   
   notificationCount.textContent = count;
   
@@ -472,6 +529,128 @@ function updateNotificationCount() {
     notificationCount.style.display = 'flex';
   }
 }
+
+// Add this function to delete reservation from localStorage
+function deleteReservation(id) {
+  if (confirm('Are you sure you want to delete this reservation?')) {
+    // Get current reservations
+    const reservations = getReservations();
+    
+    // Remove the reservation from pending list
+    reservations.pending = reservations.pending.filter(res => res.id !== id);
+    
+    // Update timestamp
+    reservations.lastUpdate = new Date().getTime();
+    
+    // Save back to localStorage
+    localStorage.setItem('classroomReservations', JSON.stringify(reservations));
+    
+    // Refresh the reservations display
+    loadReservations();
+    
+    // Show notification
+    alert('Reservation deleted successfully');
+  }
+}
+
+// Add storage event listener to detect changes from admin page
+window.addEventListener('storage', function(e) {
+  if (e.key === 'classroomReservations') {
+    console.log('Reservation data was updated in another tab');
+    loadReservations();
+    
+    // Check if any of our pending reservations got approved/denied
+    const newData = JSON.parse(e.newValue);
+    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+    
+    // Look for recently approved reservations
+    const recentlyApproved = newData.approved.filter(res => 
+      res.studentId === loggedInUser.id && 
+      res.notificationShown !== true
+    );
+    
+    // Look for recently denied reservations
+    const recentlyDenied = newData.denied.filter(res => 
+      res.studentId === loggedInUser.id && 
+      res.notificationShown !== true
+    );
+    
+    // Show notifications for new approvals/denials
+    recentlyApproved.forEach(res => {
+      showStatusChangeAlert(res, 'approved');
+      
+      // Mark as notification shown
+      const index = newData.approved.findIndex(r => r.id === res.id);
+      if (index !== -1) {
+        newData.approved[index].notificationShown = true;
+        localStorage.setItem('classroomReservations', JSON.stringify(newData));
+      }
+    });
+    
+    recentlyDenied.forEach(res => {
+      showStatusChangeAlert(res, 'denied');
+      
+      // Mark as notification shown
+      const index = newData.denied.findIndex(r => r.id === res.id);
+      if (index !== -1) {
+        newData.denied[index].notificationShown = true;
+        localStorage.setItem('classroomReservations', JSON.stringify(newData));
+      }
+    });
+  }
+});
+
+// Add function to show status change notifications
+function showStatusChangeAlert(reservation, status) {
+  // Create an alert
+  const alertDiv = document.createElement('div');
+  alertDiv.className = 'alert-popup status-alert';
+  alertDiv.style.display = 'block';
+  
+  const content = document.createElement('div');
+  content.className = 'alert-content';
+  
+  const icon = status === 'approved' ? 'fa-check-circle' : 'fa-times-circle';
+  const message = status === 'approved' 
+    ? `Your reservation for ${reservation.classroom} on ${formatDate(reservation.date)} has been approved!` 
+    : `Your reservation for ${reservation.classroom} on ${formatDate(reservation.date)} has been denied. Reason: ${reservation.adminComment || 'No reason provided'}`;
+  
+  content.innerHTML = `
+    <i class="fas ${icon}"></i>
+    <div class="alert-message">
+      <p>${message}</p>
+      <div class="alert-actions">
+        <button class="alert-button dismiss-alert">Dismiss</button>
+      </div>
+    </div>
+  `;
+  
+  alertDiv.appendChild(content);
+  document.body.appendChild(alertDiv);
+  
+  // Add dismiss handler
+  alertDiv.querySelector('.dismiss-alert').addEventListener('click', () => {
+    alertDiv.style.animation = 'slideOut 0.5s forwards';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 500);
+  });
+  
+  // Auto dismiss after 30 seconds
+  setTimeout(() => {
+    alertDiv.style.animation = 'slideOut 0.5s forwards';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 500);
+  }, 30000);
+}
+
+// Helper function to format date
+function formatDate(dateString) {
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
 
 // Call this in DOMContentLoaded event
 document.addEventListener('DOMContentLoaded', () => {
@@ -505,72 +684,6 @@ document.getElementById('close-alert').addEventListener('click', () => {
   }, 500);
 });
 
-function loadReservations() {
-  // Load pending reservations
-  const pendingContainer = document.getElementById('pending-reservations');
-  pendingContainer.innerHTML = '';
-  
-  if (mockReservations.pending.length === 0) {
-    pendingContainer.innerHTML = '<p>No pending reservations</p>';
-  } else {
-    mockReservations.pending.forEach(reservation => {
-      const reservationElement = createReservationElement(reservation, 'pending');
-      pendingContainer.appendChild(reservationElement);
-    });
-  }
-  
-  // Load approved reservations
-  const approvedContainer = document.getElementById('approved-reservations');
-  approvedContainer.innerHTML = '';
-  
-  if (mockReservations.approved.length === 0) {
-    approvedContainer.innerHTML = '<p>No approved reservations</p>';
-  } else {
-    mockReservations.approved.forEach(reservation => {
-      const reservationElement = createReservationElement(reservation, 'approved');
-      approvedContainer.appendChild(reservationElement);
-    });
-  }
-  
-  // Load denied reservations
-  const deniedContainer = document.getElementById('denied-reservations');
-  deniedContainer.innerHTML = '';
-  
-  if (mockReservations.denied.length === 0) {
-    deniedContainer.innerHTML = '<p>No denied reservations</p>';
-  } else {
-    mockReservations.denied.forEach(reservation => {
-      const reservationElement = createReservationElement(reservation, 'denied');
-      deniedContainer.appendChild(reservationElement);
-    });
-  }
-
-  // Load reminders
-  const reminderContainer = document.getElementById('reminder-notifications');
-  reminderContainer.innerHTML = '';
-  
-  if (!mockReservations.reminders || mockReservations.reminders.length === 0) {
-    reminderContainer.innerHTML = '<p>No upcoming reminders</p>';
-  } else {
-    mockReservations.reminders.forEach(reminder => {
-      const reminderElement = document.createElement('div');
-      reminderElement.className = 'reservation-notification reminder';
-      
-      reminderElement.innerHTML = `
-        <div class="reservation-content">
-          <div class="reservation-title">${reminder.classroom}</div>
-          <div class="reservation-details">${reminder.date} | ${reminder.time}</div>
-          <div class="reservation-purpose">${reminder.purpose}</div>
-        </div>
-      `;
-      
-      reminderContainer.appendChild(reminderElement);
-    });
-  }
-  
-  // Update notification count to include all types
-  updateNotificationCount();
-}
 
 function createReservationElement(reservation, status) {
   const reservationElement = document.createElement('div');
@@ -649,8 +762,11 @@ function createReservationElement(reservation, status) {
 }
 
 function editReservation(id) {
+  // Get reservations from localStorage
+  const reservations = getReservations();
+  
   // Find the reservation in pending list
-  const reservation = mockReservations.pending.find(res => res.id === id);
+  const reservation = reservations.pending.find(res => res.id === id);
   if (!reservation) return;
   
   // Pre-fill the reservation form
@@ -658,6 +774,14 @@ function editReservation(id) {
   document.getElementById('reservation-date').value = reservation.date;
   document.getElementById('reservation-time').value = reservation.time;
   document.getElementById('reservation-purpose').value = reservation.purpose;
+  document.getElementById('reservation-attendees').value = reservation.attendees;
+  
+  // Set recurrent option if present
+  if (reservation.recurrent) {
+    document.querySelector(`input[name="recurrent"][value="${reservation.recurrent}"]`).checked = true;
+  } else {
+    document.querySelector('input[name="recurrent"][value="none"]').checked = true;
+  }
   
   // Store the editing reservation ID
   document.getElementById('reservation-form').dataset.editId = id;
@@ -669,18 +793,6 @@ function editReservation(id) {
   document.querySelector('.reserve-btn').textContent = 'Update Reservation';
 }
 
-function deleteReservation(id) {
-  if (confirm('Are you sure you want to delete this reservation?')) {
-      // Remove the reservation from pending list
-      mockReservations.pending = mockReservations.pending.filter(res => res.id !== id);
-      
-      // Refresh the reservations display
-      loadReservations();
-      
-      // Show notification
-      alert('Reservation deleted successfully');
-  }
-}
 
 function handleAvatarUpload(e) {
   e.preventDefault();
@@ -716,11 +828,13 @@ function checkRecurrentReminders() {
   const today = new Date();
   const formattedToday = today.toISOString().split('T')[0];
   
+  // Get reservations from localStorage
+  const reservations = getReservations();
+  
   // Check approved recurrent reservations
-  mockReservations.approved.forEach(reservation => {
+  reservations.approved.forEach(reservation => {
     if (reservation.recurrent) {
       // For demo purposes, we'll create a reminder for any recurrent reservation
-      // In a real app, you'd calculate the next occurrence based on the recurrence pattern
       
       const reminderNotification = {
         id: Date.now(),
@@ -732,16 +846,19 @@ function checkRecurrentReminders() {
         recurrent: reservation.recurrent
       };
       
-      // Add to a new reminders section (we'll create this)
-      if (!mockReservations.reminders) {
-        mockReservations.reminders = [];
+      // Add to a new reminders section (we'll create this if it doesn't exist)
+      if (!reservations.reminders) {
+        reservations.reminders = [];
       }
       
       // Only add if not already there
-      if (!mockReservations.reminders.some(r => r.classroom === reservation.classroom && 
-                                           r.date === reservation.date && 
-                                           r.time === reservation.time)) {
-        mockReservations.reminders.push(reminderNotification);
+      if (!reservations.reminders.some(r => r.classroom === reservation.classroom && 
+                                         r.date === reservation.date && 
+                                         r.time === reservation.time)) {
+        reservations.reminders.push(reminderNotification);
+        
+        // Save updated reservations to localStorage
+        localStorage.setItem('classroomReservations', JSON.stringify(reservations));
         
         // Update notification count
         updateNotificationCount();

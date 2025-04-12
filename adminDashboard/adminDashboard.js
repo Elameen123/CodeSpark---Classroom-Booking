@@ -1,6 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Make sure shared storage is initialized
+    initializeSharedStorage();
+    
     // Initialize date pickers
     initializeDatePickers();
+
+    // Initialize EmailJS
+    initializeEmailJS();
     
     // Fetch and display reservations based on default filters
     loadReservations();
@@ -10,86 +16,50 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update stats
     updateStats();
+    
+    // Set up storage event listener to detect changes from user page
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'classroomReservations') {
+            console.log('Reservation data was updated in another tab');
+            // Check for new pending reservations
+            const newData = JSON.parse(e.newValue);
+            const oldData = e.oldValue ? JSON.parse(e.oldValue) : {pending: []};
+            
+            if (newData.pending.length > oldData.pending.length) {
+                // New reservation has been added
+                // Show notification
+                showNewReservationAlert();
+                
+                // Reload reservations
+                loadReservations();
+                updateStats();
+            }
+        }
+    });
 });
 
-// Sample reservation data (in a real app, this would come from a database)
-const reservationsData = [
-    {
-        id: 'RES3456',
-        studentName: 'Alex Johnson', 
-        studentId: 'STU78912',
-        classroom: 'SST 104',
-        date: '2025-04-12',
-        time: '10:00 - 12:00',
-        purpose: 'Chemistry study group session',
-        status: 'pending',
-        attendees: 12,
-        createdAt: '2025-04-09T15:30:00'
-    },
-    {
-        id: 'RES3457',
-        studentName: 'Maria Garcia', 
-        studentId: 'STU78913',
-        classroom: 'SST 110',
-        date: '2025-04-13',
-        time: '14:00 - 16:00',
-        purpose: 'Physics lab preparation',
-        status: 'pending',
-        attendees: 8,
-        createdAt: '2025-04-09T16:15:00'
-    },
-    {
-        id: 'RES3452',
-        studentName: 'James Wilson', 
-        studentId: 'STU78905',
-        classroom: 'TYD 201',
-        date: '2025-04-11',
-        time: '08:00 - 10:00',
-        purpose: 'Computer Science project meeting',
-        status: 'denied',
-        attendees: 5,
-        adminComment: 'Room already booked for maintenance',
-        createdAt: '2025-04-08T09:45:00'
-    },
-    {
-        id: 'RES3450',
-        studentName: 'Sarah Lee', 
-        studentId: 'STU78900',
-        classroom: 'SST 220',
-        date: '2025-04-10',
-        time: '16:00 - 18:00',
-        purpose: 'Biology study group',
-        status: 'approved',
-        attendees: 15,
-        adminComment: 'Approved. Please ensure the room is clean after use.',
-        createdAt: '2025-04-08T08:30:00'
-    },
-    {
-        id: 'RES3445',
-        studentName: 'David Chen', 
-        studentId: 'STU78890',
-        classroom: 'TYD 305',
-        date: '2025-04-14',
-        time: '12:00 - 14:00',
-        purpose: 'Mathematics tutoring session',
-        status: 'approved',
-        attendees: 6,
-        adminComment: 'Approved. Room has whiteboard as requested.',
-        createdAt: '2025-04-07T14:20:00'
-    },
-    {
-        id: 'RES3458',
-        studentName: 'Admin User', 
-        studentId: 'ADMIN01',
-        classroom: 'SST 104',
-        date: '2025-04-15',
-        time: '08:00 - 10:00',
-        purpose: 'Department meeting',
-        status: 'admin',
-        attendees: 10,
-        createdAt: '2025-04-09T17:00:00'
+// Add this function to initialize shared storage
+function initializeSharedStorage() {
+    // Check if reservations storage exists
+    if (!localStorage.getItem('classroomReservations')) {
+        // Create initial structure with sample data
+        const initialReservations = {
+            pending: reservationsData.filter(r => r.status === 'pending'),
+            approved: reservationsData.filter(r => r.status === 'approved'),
+            denied: reservationsData.filter(r => r.status === 'denied'),
+            lastUpdate: new Date().getTime()
+        };
+        localStorage.setItem('classroomReservations', JSON.stringify(initialReservations));
     }
-];
+}
+
+// Initialize EmailJS
+function initializeEmailJS() {
+    // Replace with your actual EmailJS user ID
+    emailjs.init("O3K5dfZJQv5YP6W9V");
+}
+
+// Sample reservation data (in a real app, this would come from a database)
 
 // Confirmation modal variables
 let confirmAction = null;
@@ -220,6 +190,7 @@ function clearFilters() {
 }
 
 // Load reservations based on filters
+// Replace loadReservations function to use localStorage
 function loadReservations() {
     const statusFilter = document.getElementById('status-filter').value;
     const dateFilter = document.getElementById('date-filter').value;
@@ -228,8 +199,29 @@ function loadReservations() {
     // Update the current view title
     updateViewTitle(statusFilter);
     
+    // Get reservations from localStorage
+    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+    
+    // Create a flat array of all reservations with their status
+    let allReservations = [];
+    
+    // Add pending reservations
+    reservationsStorage.pending.forEach(res => {
+        allReservations.push({...res, status: 'pending'});
+    });
+    
+    // Add approved reservations
+    reservationsStorage.approved.forEach(res => {
+        allReservations.push({...res, status: 'approved'});
+    });
+    
+    // Add denied reservations
+    reservationsStorage.denied.forEach(res => {
+        allReservations.push({...res, status: 'denied'});
+    });
+    
     // Filter reservations
-    let filteredReservations = reservationsData.filter(reservation => {
+    let filteredReservations = allReservations.filter(reservation => {
         // Status filter
         if (statusFilter !== 'all' && reservation.status !== statusFilter) {
             return false;
@@ -274,6 +266,56 @@ function loadReservations() {
     }
 }
 
+// Function to send email notification when a reservation is approved
+function sendApprovalEmail(reservation) {
+    // Get admin information
+    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')) || {
+        name: 'Admin User',
+        email: 'elvis.ebenuwah@pau.edu.ng'
+    };
+    
+    // Sanitize and validate inputs
+    const safeReservation = {
+        email: reservation.email || 'student@pau.edu.ng',
+        studentName: reservation.studentName || 'Student',
+        id: reservation.id || `RES${Date.now()}`,
+        classroom: reservation.classroom || 'Requested Classroom',
+        date: reservation.date || '',
+        time: reservation.time || 'Scheduled Time',
+        purpose: (reservation.purpose || 'Academic Activity').substring(0, 100), // Truncate long text
+        adminComment: reservation.adminComment ? reservation.adminComment.substring(0, 200) : ''
+    };
+    
+    // Prepare email template parameters
+    const templateParams = {
+        to_email: safeReservation.email,
+        to_name: safeReservation.studentName,
+        reservation_id: safeReservation.id,
+        classroom: safeReservation.classroom,
+        date: formatDate(safeReservation.date),
+        time: safeReservation.time,
+        purpose: safeReservation.purpose,
+        admin_name: loggedInUser.name || 'Administrator',
+        admin_comment: safeReservation.adminComment,
+        cc_security: 'osagie.osazuwa@pau.edu.ng',
+        cc_facility: 'muizah.apampa@pau.edu.ng',
+        cc_admin: loggedInUser.email || 'elvis.ebenuwah@pau.edu.ng'
+    };
+    
+    // Log for debugging (remove in production)
+    console.log('Email template parameters:', templateParams);
+    
+    // Send the email using EmailJS
+    emailjs.send('service_y4hrfnh', 'template_mkka46n', templateParams)
+        .then(function(response) {
+            console.log('Email sent successfully:', response);
+            showAlert('Approval notification email sent successfully');
+        }, function(error) {
+            console.error('Email sending failed:', error);
+            console.error('Template parameters:', templateParams);
+            showAlert('Failed to send email notification');
+        });
+}
 // Show confirmation modal
 function showConfirmModal(action) {
     confirmAction = action;
@@ -385,8 +427,22 @@ function addReservationToTable(reservation) {
 }
 
 // Open the review modal for a reservation
+// Update the openReviewModal function to match the new data structure
 function openReviewModal(reservationId, action) {
-    const reservation = reservationsData.find(r => r.id === reservationId);
+    // Get reservations from localStorage
+    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+    
+    // Look for the reservation in all statuses
+    let reservation = reservationsStorage.pending.find(r => r.id === reservationId);
+    
+    if (!reservation) {
+        reservation = reservationsStorage.approved.find(r => r.id === reservationId);
+    }
+    
+    if (!reservation) {
+        reservation = reservationsStorage.denied.find(r => r.id === reservationId);
+    }
+    
     if (!reservation) return;
     
     // Populate modal fields
@@ -412,15 +468,45 @@ function openReviewModal(reservationId, action) {
 }
 
 // Update reservation status (approve/deny)
+// Update the updateReservationStatus function to use localStorage
+// Update the updateReservationStatus function to include email sending
 function updateReservationStatus(status) {
     const reservationId = document.getElementById('reservation-id').value;
     const adminComment = document.getElementById('admin-comment').value;
     
-    // Find the reservation and update its status
-    const reservationIndex = reservationsData.findIndex(r => r.id === reservationId);
+    // Get the reservations from localStorage
+    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+    
+    // Find the reservation in pending
+    const reservationIndex = reservationsStorage.pending.findIndex(r => r.id === reservationId);
+    
     if (reservationIndex !== -1) {
-        reservationsData[reservationIndex].status = status;
-        reservationsData[reservationIndex].adminComment = adminComment;
+        // Get the reservation object
+        const reservation = reservationsStorage.pending[reservationIndex];
+        
+        // Update status and admin comment
+        reservation.status = status;
+        reservation.adminComment = adminComment;
+        reservation.processedAt = new Date().toISOString();
+        
+        // Remove from pending
+        reservationsStorage.pending.splice(reservationIndex, 1);
+        
+        // Add to appropriate array
+        if (status === 'approved') {
+            reservationsStorage.approved.push(reservation);
+            
+            // Send approval email notification
+            sendApprovalEmail(reservation);
+        } else {
+            reservationsStorage.denied.push(reservation);
+        }
+        
+        // Update timestamp
+        reservationsStorage.lastUpdate = new Date().getTime();
+        
+        // Save back to localStorage
+        localStorage.setItem('classroomReservations', JSON.stringify(reservationsStorage));
         
         // Close the modal
         document.getElementById('review-modal').style.display = 'none';
@@ -433,8 +519,9 @@ function updateReservationStatus(status) {
         updateStats();
     }
 }
+// Create admin reservation
+// Update the createAdminReservation function to use localStorage
 
-// Create a new admin reservation
 function createAdminReservation() {
     const classroom = document.getElementById('booking-classroom').value;
     const date = document.getElementById('booking-date').value;
@@ -442,25 +529,44 @@ function createAdminReservation() {
     const purpose = document.getElementById('booking-purpose').value;
     const attendees = document.getElementById('booking-attendees').value;
     
-    // Generate a new ID
-    const newId = 'RES' + (3458 + Math.floor(Math.random() * 10));
+
+    // Generate a new reservation ID
+    const newId = 'RES' + Date.now();
+    
+    // Get current admin user
+    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+
     
     // Create the reservation object
     const newReservation = {
         id: newId,
-        studentName: 'Admin User',
-        studentId: 'ADMIN01',
-        classroom: classroom,
-        date: date,
-        time: time,
-        purpose: purpose,
+
+        studentName: loggedInUser.name || 'Admin User',
+        studentId: loggedInUser.id || 'ADMIN01',
+        email: loggedInUser.email || 'admin@pau.edu.ng',
+        classroom,
+        date,
+        time,
+        purpose,
+
         status: 'admin',
         attendees: parseInt(attendees),
         createdAt: new Date().toISOString()
     };
     
-    // Add to the reservations data
-    reservationsData.push(newReservation);
+
+    // Get reservations from localStorage
+    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+    
+    // Add to approved reservations
+    reservationsStorage.approved.push({...newReservation, status: 'approved'});
+    
+    // Update timestamp
+    reservationsStorage.lastUpdate = new Date().getTime();
+    
+    // Save back to localStorage
+    localStorage.setItem('classroomReservations', JSON.stringify(reservationsStorage));
+
     
     // Close the modal
     document.getElementById('booking-modal').style.display = 'none';
@@ -475,16 +581,39 @@ function createAdminReservation() {
     loadReservations();
     updateStats();
 }
-
 // Export reservations to CSV
+// Update exportReservations function to use localStorage
 function exportReservations() {
     // Get the current filtered reservations
     const statusFilter = document.getElementById('status-filter').value;
     const dateFilter = document.getElementById('date-filter').value;
     const locationFilter = document.getElementById('location-filter').value;
     
-    // Filter reservations
-    let filteredReservations = reservationsData.filter(reservation => {
+
+    // Get reservations from localStorage
+    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+    
+    // Create a flat array of all reservations
+    let allReservations = [];
+    
+    // Add pending reservations
+    reservationsStorage.pending.forEach(res => {
+        allReservations.push({...res, status: 'pending'});
+    });
+    
+    // Add approved reservations
+    reservationsStorage.approved.forEach(res => {
+        allReservations.push({...res, status: 'approved'});
+    });
+    
+    // Add denied reservations
+    reservationsStorage.denied.forEach(res => {
+        allReservations.push({...res, status: 'denied'});
+    });
+    
+    // Filter reservations the same way as displayed
+    let filteredReservations = allReservations.filter(reservation => {
+
         // Status filter
         if (statusFilter !== 'all' && reservation.status !== statusFilter) {
             return false;
@@ -547,20 +676,18 @@ function exportReservations() {
     showAlert('Reservations exported to CSV successfully');
 }
 
-// Format date for file names
-function formatDateForFileName(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
 
-// Update stats
+
+// Update statistics counters
+// Update the updateStats function to use localStorage
 function updateStats() {
-    const pendingCount = reservationsData.filter(r => r.status === 'pending').length;
-    const approvedCount = reservationsData.filter(r => r.status === 'approved').length;
-    const deniedCount = reservationsData.filter(r => r.status === 'denied').length;
-    const totalCount = reservationsData.length;
+    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+    
+    const pendingCount = reservationsStorage.pending.length;
+    const approvedCount = reservationsStorage.approved.length;
+    const deniedCount = reservationsStorage.denied.length;
+    const totalCount = pendingCount + approvedCount + deniedCount;
+
     
     document.getElementById('pending-count').textContent = pendingCount;
     document.getElementById('approved-count').textContent = approvedCount;
@@ -569,7 +696,27 @@ function updateStats() {
     document.getElementById('notification-count').textContent = pendingCount;
 }
 
-// Show alert
+
+// Add a function to show notification for new reservation
+function showNewReservationAlert() {
+    const alertElement = document.getElementById('success-alert');
+    const messageElement = document.getElementById('alert-message');
+    
+    messageElement.textContent = 'New reservation has been submitted for approval!';
+    alertElement.classList.add('show');
+    
+    // Play notification sound (optional)
+    const audio = new Audio('../sounds/notification.mp3');
+    audio.play().catch(e => console.log('Audio playback error:', e));
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+        alertElement.classList.remove('show');
+    }, 3000);
+}
+
+// Show alert popup
+
 function showAlert(message) {
     const alertElement = document.getElementById('success-alert');
     const alertMessage = document.getElementById('alert-message');
@@ -605,42 +752,29 @@ function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Create logout confirmation modal and append to body
-    createLogoutModal();
-    
-    // Add event listener to logout button
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', showLogoutConfirmation);
-    }
-});
 
-// Create logout confirmation modal
-function createLogoutModal() {
-    const modalHTML = `
-        <div class="logout-confirm-modal" id="logout-confirm-modal">
-            <div class="logout-modal-content">
-                <div class="logout-modal-header">
-                    <h3>Confirm Logout</h3>
-                </div>
-                <div class="logout-modal-message">
-                    Are you sure you want to log out?
-                </div>
-                <div class="logout-modal-actions">
-                    <button class="logout-cancel-btn" id="logout-cancel">Cancel</button>
-                    <button class="logout-proceed-btn" id="logout-proceed">Logout</button>
-                </div>
-            </div>
-        </div>
-    `;
+// Helper function to format date
+function formatDate(dateString) {
+    // Check if dateString exists and is valid
+    if (!dateString) {
+        return 'Unspecified date';
+    }
     
-    // Append modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Add event listeners to modal buttons
-    document.getElementById('logout-cancel').addEventListener('click', closeLogoutModal);
-    document.getElementById('logout-proceed').addEventListener('click', performLogout);
+    try {
+        const date = new Date(dateString);
+        
+        // Check for invalid date
+        if (isNaN(date.getTime())) {
+            return 'Pending date confirmation';
+        }
+        
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString(undefined, options);
+    } catch (error) {
+        console.error(`Error formatting date: "${dateString}"`, error);
+        return 'Pending date confirmation';
+    }
+
 }
 
 // Show logout confirmation modal

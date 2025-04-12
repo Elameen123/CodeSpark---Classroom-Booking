@@ -90,7 +90,7 @@ function handleLogin(e) {
         const defaultAdmin = {
             id: 'ADM10000',
             name: 'Admin User',
-            email: 'admin@pau.edu.ng',
+            email: 'elvis.ebenuwah@pau.edu.ng',
             password: 'Admin123',  // Updated to Admin123
             registrationDate: new Date().toISOString(),
             role: 'admin'
@@ -103,7 +103,7 @@ function handleLogin(e) {
     const user = users.find(u => u.email === email && u.password === password);
     
     // If user not found but email is valid PAU email, create new user with default password
-    if (!user && email.endsWith('@pau.edu.ng') && email !== 'admin@pau.edu.ng') {
+    if (!user && email.endsWith('@pau.edu.ng') && email !== 'elvis.ebenuwah@pau.edu.ng') {
         const nameInfo = extractNameFromEmail(email);
         
         if (nameInfo) {
