@@ -351,6 +351,8 @@ function proceedWithConfirmedAction() {
     closeConfirmModal();
     
     if (confirmAction === 'approve' || confirmAction === 'deny') {
+
+        console.log(confirmAction);
         updateReservationStatus(confirmAction);
     }
     
@@ -467,12 +469,38 @@ function openReviewModal(reservationId, action) {
     }
 }
 
-// Update reservation status (approve/deny)
-// Update the updateReservationStatus function to use localStorage
-// Update the updateReservationStatus function to include email sending
+// Add this function to record new activity
+function recordActivity(reservation, action) {
+    // Get existing activities from localStorage or create empty array
+    const activities = JSON.parse(localStorage.getItem('recentActivities')) || [];
+    
+    // Create new activity record
+    const newActivity = {
+        id: reservation.id,
+        action: action, // 'created', 'approved', 'denied', etc.
+        reservationId: reservation.id,
+        studentName: reservation.studentName,
+        classroom: reservation.classroom,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Add to beginning of array
+    activities.unshift(newActivity);
+    
+    // Keep only the most recent 20 activities
+    const trimmedActivities = activities.slice(0, 20);
+    
+    // Save back to localStorage
+    localStorage.setItem('recentActivities', JSON.stringify(trimmedActivities));
+}
+
+// Update the updateReservationStatus function to record activity
 function updateReservationStatus(status) {
     const reservationId = document.getElementById('reservation-id').value;
     const adminComment = document.getElementById('admin-comment').value;
+    
+    // Convert "approve" to "approved" for consistency
+    const finalStatus = status === 'approve' ? 'approved' : status;
     
     // Get the reservations from localStorage
     const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
@@ -485,7 +513,7 @@ function updateReservationStatus(status) {
         const reservation = reservationsStorage.pending[reservationIndex];
         
         // Update status and admin comment
-        reservation.status = status;
+        reservation.status = finalStatus;
         reservation.adminComment = adminComment;
         reservation.processedAt = new Date().toISOString();
         
@@ -493,13 +521,19 @@ function updateReservationStatus(status) {
         reservationsStorage.pending.splice(reservationIndex, 1);
         
         // Add to appropriate array
-        if (status === 'approved') {
+        if (finalStatus === 'approved') {
             reservationsStorage.approved.push(reservation);
+            
+            // Record this activity
+            recordActivity(reservation, 'approved');
             
             // Send approval email notification
             sendApprovalEmail(reservation);
         } else {
             reservationsStorage.denied.push(reservation);
+            
+            // Record this activity
+            recordActivity(reservation, 'denied');
         }
         
         // Update timestamp
@@ -511,12 +545,13 @@ function updateReservationStatus(status) {
         // Close the modal
         document.getElementById('review-modal').style.display = 'none';
         
-        // Show success alert
-        showAlert(`Reservation ${reservationId} has been ${status}d.`);
+        // Show success alert - use original status for verb form in message
+        showAlert(`Reservation ${reservationId} has been ${status}${status === 'approve' ? 'd' : 'd'}.`);
         
         // Reload reservations and update stats
         loadReservations();
         updateStats();
+        updateRecentActivity();
     }
 }
 // Create admin reservation
@@ -567,6 +602,8 @@ function createAdminReservation() {
     // Save back to localStorage
     localStorage.setItem('classroomReservations', JSON.stringify(reservationsStorage));
 
+     // Record this activity after creating reservation
+     recordActivity(newReservation, 'created');
     
     // Close the modal
     document.getElementById('booking-modal').style.display = 'none';
@@ -580,6 +617,7 @@ function createAdminReservation() {
     // Reload reservations and update stats
     loadReservations();
     updateStats();
+    updateRecentActivity();
 }
 // Export reservations to CSV
 // Update exportReservations function to use localStorage
@@ -693,7 +731,68 @@ function updateStats() {
     document.getElementById('approved-count').textContent = approvedCount;
     document.getElementById('denied-count').textContent = deniedCount;
     document.getElementById('total-count').textContent = totalCount;
-    document.getElementById('notification-count').textContent = pendingCount;
+    // document.getElementById('notification-count').textContent = pendingCount;
+}
+
+// Add initial activities during initialization if none exist
+function initializeActivities() {
+    // Only initialize if no activities exist yet
+    if (!localStorage.getItem('recentActivities')) {
+        const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
+        const activities = [];
+        
+        // Create an initial activity for each existing reservation
+        [...reservationsStorage.approved, ...reservationsStorage.denied].forEach(res => {
+            activities.push({
+                id: res.id,
+                action: res.status,
+                reservationId: res.id,
+                studentName: res.studentName,
+                classroom: res.classroom,
+                timestamp: res.processedAt || res.createdAt || new Date().toISOString()
+            });
+        });
+        
+        // Sort by timestamp (newest first)
+        activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Keep only the 20 most recent
+        const trimmedActivities = activities.slice(0, 20);
+        
+        // Save to localStorage
+        localStorage.setItem('recentActivities', JSON.stringify(trimmedActivities));
+    }
+}
+
+// Call this during the page initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    initializeActivities();
+    // ... rest of initialization ...
+});
+
+function recordActivity(reservation, action) {
+    // Get existing activities from localStorage or create empty array
+    const activities = JSON.parse(localStorage.getItem('recentActivities')) || [];
+    
+    // Create new activity record
+    const newActivity = {
+        id: reservation.id,
+        action: action, // 'created', 'approved', 'denied', etc.
+        reservationId: reservation.id,
+        studentName: reservation.studentName,
+        classroom: reservation.classroom,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Add to beginning of array
+    activities.unshift(newActivity);
+    
+    // Keep only the most recent 20 activities
+    const trimmedActivities = activities.slice(0, 20);
+    
+    // Save back to localStorage
+    localStorage.setItem('recentActivities', JSON.stringify(trimmedActivities));
 }
 
 
@@ -730,16 +829,6 @@ function showAlert(message) {
     }, 5000);
 }
 
-// Format date
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
-}
 
 // Truncate text and add ellipsis if needed
 function truncateText(text, maxLength) {
@@ -821,6 +910,7 @@ function showAlert(message) {
 }
 
 // Add this function to update the recent activity section
+// Update updateRecentActivity to use the stored activities
 function updateRecentActivity() {
     // Get the activity list container
     const activityList = document.querySelector('.activity-list');
@@ -828,42 +918,46 @@ function updateRecentActivity() {
     // Clear existing content
     activityList.innerHTML = '';
     
-    // Copy and sort reservations by creation date (most recent first)
-    const sortedReservations = [...reservationsData].sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-    );
+    // Get activities from localStorage
+    const activities = JSON.parse(localStorage.getItem('recentActivities')) || [];
     
     // Take the 5 most recent activities
-    const recentActivities = sortedReservations.slice(0, 5);
+    const recentActivities = activities.slice(0, 5);
+    
+    if (recentActivities.length === 0) {
+        // No activities yet
+        activityList.innerHTML = '<div class="no-activities">No recent activity to display</div>';
+        return;
+    }
     
     // Add each activity to the list
-    recentActivities.forEach(reservation => {
+    recentActivities.forEach(activity => {
         let iconClass, actionText;
         
-        // Determine icon and text based on status
-        if (reservation.status === 'approved') {
+        // Determine icon and text based on action
+        if (activity.action === 'approved') {
             iconClass = 'approved';
-            actionText = `Reservation #${reservation.id.substring(3)} approved`;
-        } else if (reservation.status === 'denied') {
+            actionText = `Reservation #${activity.id.substring(3)} approved`;
+        } else if (activity.action === 'denied') {
             iconClass = 'denied';
-            actionText = `Reservation #${reservation.id.substring(3)} denied`;
-        } else if (reservation.status === 'pending') {
-            iconClass = '';
-            actionText = `New reservation #${reservation.id.substring(3)} pending`;
-        } else if (reservation.status === 'admin') {
+            actionText = `Reservation #${activity.id.substring(3)} denied`;
+        } else if (activity.action === 'created') {
             iconClass = 'created';
-            actionText = `Admin reservation #${reservation.id.substring(3)} created`;
+            actionText = `Admin reservation #${activity.id.substring(3)} created`;
+        } else if (activity.action === 'pending') {
+            iconClass = '';
+            actionText = `New reservation #${activity.id.substring(3)} pending`;
         }
         
         // Calculate time ago
-        const timeAgo = getTimeAgo(new Date(reservation.createdAt));
+        const timeAgo = getTimeAgo(new Date(activity.timestamp));
         
         // Create activity item
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
         activityItem.innerHTML = `
             <div class="activity-icon ${iconClass}">
-                <i class="fas ${getIconByStatus(reservation.status)}"></i>
+                <i class="fas ${getIconByAction(activity.action)}"></i>
             </div>
             <div class="activity-content">
                 <div class="activity-text">${actionText}</div>
@@ -873,6 +967,17 @@ function updateRecentActivity() {
         
         activityList.appendChild(activityItem);
     });
+}
+
+// Helper function for activity icons
+function getIconByAction(action) {
+    switch(action) {
+        case 'approved': return 'fa-check';
+        case 'denied': return 'fa-times';
+        case 'created': return 'fa-calendar-check';
+        case 'pending': return 'fa-clock';
+        default: return 'fa-user';
+    }
 }
 
 // Helper function to get appropriate icon by status
@@ -904,24 +1009,6 @@ function getTimeAgo(date) {
     } else {
         return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
     }
-}
-
-// Add this to your existing updateReservationStatus function after updating stats
-function updateReservationStatus(status) {
-    // Existing code...
-    
-    // After this line: updateStats();
-    // Add:
-    updateRecentActivity();
-}
-
-// Add this to your createAdminReservation function after updating stats
-function createAdminReservation() {
-    // Existing code...
-    
-    // After this line: updateStats();
-    // Add:
-    updateRecentActivity();
 }
 
 // Add this to your initial document.addEventListener('DOMContentLoaded', function() {...}
