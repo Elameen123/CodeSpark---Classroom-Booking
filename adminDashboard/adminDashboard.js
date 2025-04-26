@@ -157,6 +157,10 @@ function setupEventListeners() {
     document.getElementById('deny-btn').addEventListener('click', function() {
         showConfirmModal('deny');
     });
+
+    document.getElementById('logout-btn').addEventListener('click', function() {
+        performLogout();
+    });
     
     // Confirmation modal event listeners
     document.getElementById('close-confirm-modal').addEventListener('click', closeConfirmModal);
