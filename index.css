@@ -614,6 +614,7 @@ body {
     
     .modal-content {
         width: 80%;
+        height: 80%;
         padding: 1.5rem;
     }
     
@@ -653,6 +654,12 @@ body {
         gap: 1rem;
         justify-content: space-between;
     }
+
+    .modal {
+        width: 80%;
+        height: 80%;
+        
+    }
 }
 
 /* For very small screens, ensure the cards still look good */
@@ -665,5 +672,11 @@ body {
     
     .classrooms-grid {
         gap: 0.5rem;
+    }
+
+    .modal {
+        width: 80%;
+        height: 80%;
+        
     }
 }

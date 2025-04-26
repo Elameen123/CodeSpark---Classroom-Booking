@@ -896,7 +896,7 @@ function performLogout() {
     // Redirect to login page after a short delay
     setTimeout(() => {
         window.location.href = '/loginPage/login.html'; 
-    }, 1000);
+    }, 100);
 }
 
 // Show alert message (reusing the existing alert functionality)
