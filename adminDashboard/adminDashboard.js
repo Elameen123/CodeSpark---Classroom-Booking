@@ -560,7 +560,9 @@ function updateReservationStatus(status) {
 function createAdminReservation() {
     const classroom = document.getElementById('booking-classroom').value;
     const date = document.getElementById('booking-date').value;
-    const time = document.getElementById('booking-time').value;
+    const startTime = document.getElementById('booking-start-time').value;
+    const endTime = document.getElementById('booking-end-time').value;
+    const time = startTime + " - " + endTime;
     const purpose = document.getElementById('booking-purpose').value;
     const attendees = document.getElementById('booking-attendees').value;
     

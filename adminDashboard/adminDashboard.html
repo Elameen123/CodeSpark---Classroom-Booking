@@ -260,16 +260,16 @@
                         <input type="text" id="booking-date" class="modal-input" placeholder="Select date" required>
                     </div>
                     
-                    <div class="modal-form-group">
-                        <label class="modal-label" for="booking-time">Time</label>
-                        <select id="booking-time" class="modal-input" required>
-                            <option value="">Select time</option>
-                            <option value="08:00 - 10:00">08:00 - 10:00</option>
-                            <option value="10:00 - 12:00">10:00 - 12:00</option>
-                            <option value="12:00 - 14:00">12:00 - 14:00</option>
-                            <option value="14:00 - 16:00">14:00 - 16:00</option>
-                            <option value="16:00 - 18:00">16:00 - 18:00</option>
-                        </select>
+                    <div class="modal-form-group two-columns">
+                        <div class="modal-form-group">
+                            <label class="modal-label" for="booking-start-time">Start Time</label>
+                            <input type="time" id="booking-start-time" class="modal-input" required>
+                        </div>
+                        
+                        <div class="modal-form-group">
+                            <label class="modal-label" for="booking-end-time">End Time</label>
+                            <input type="time" id="booking-end-time" class="modal-input" required>
+                        </div>
                     </div>
                 </div>
                 
