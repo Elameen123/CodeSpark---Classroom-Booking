@@ -298,6 +298,8 @@ body {
     border-radius: 8px;
     max-width: 500px;
     width: 100%;
+    height: auto;
+    overflow-y: scroll;
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
@@ -614,7 +616,7 @@ body {
     
     .modal-content {
         width: 80%;
-        height: 80%;
+        /* height: 80%; */
         padding: 1.5rem;
     }
     
@@ -655,15 +657,11 @@ body {
         justify-content: space-between;
     }
 
-    .modal {
-        width: 80%;
-        height: 80%;
-        
-    }
+    
 }
 
 /* For very small screens, ensure the cards still look good */
-@media (max-width: 350px) {
+@media (max-width: 400px) {
     .classroom-card {
         width: calc(45% - 0.25rem);
         flex-basis: calc(45% - 0.25rem);
@@ -674,9 +672,8 @@ body {
         gap: 0.5rem;
     }
 
-    .modal {
-        width: 80%;
-        height: 80%;
-        
+    .modal-content {
+        height: 90%;
     }
+
 }
