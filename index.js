@@ -94,6 +94,12 @@ function setupEventListeners() {
   
   // Avatar form submission
   document.getElementById('avatar-form').addEventListener('submit', handleAvatarUpload);
+
+// Close modal button
+document.getElementById('close-modal').addEventListener('click', () => {
+  document.getElementById('reservation-modal').style.display = 'none';
+  resetReservationForm();
+});
   
   // Close modal when clicking outside
   window.addEventListener('click', (e) => {
@@ -101,6 +107,7 @@ function setupEventListeners() {
     const avatarModal = document.getElementById('avatar-modal');
     if (e.target === reservationModal) {
       reservationModal.style.display = 'none';
+      resetReservationForm();
     }
     if (e.target === avatarModal) {
       avatarModal.style.display = 'none';
@@ -239,9 +246,58 @@ function addClassroomCard(classroom, container) {
   
   if (classroom.available) {
     classroomCard.addEventListener('click', () => openReservationModal(classroom));
+  } else {
+    classroomCard.addEventListener('click', () => showUnavailableAlert(classroom));
   }
   
   container.appendChild(classroomCard);
+}
+
+function showUnavailableAlert(classroom) {
+  // Create an alert for unavailable classroom
+  const alertDiv = document.createElement('div');
+  alertDiv.className = 'alert-popup unavailable-alert';
+  alertDiv.style.display = 'block';
+
+  alertDiv.style.backgroundColor = '#dc3545';
+  alertDiv.style.color = '#ffffff';
+  
+  const content = document.createElement('div');
+  content.className = 'alert-content';
+  
+  content.innerHTML = `
+    <i class="fas fa-times-circle"></i>
+    <div class="alert-message">
+      <p><strong>${classroom.name}</strong> is currently unavailable for reservation during the selected time.</p>
+      <div class="alert-actions">
+        <button class="alert-button dismiss-alert">Dismiss</button>
+      </div>
+    </div>
+  `;
+  
+  alertDiv.appendChild(content);
+  document.body.appendChild(alertDiv);
+  
+  // Add dismiss handler
+  const dismissButton = alertDiv.querySelector('.dismiss-alert');
+  dismissButton.addEventListener('click', () => {
+    alertDiv.style.animation = 'slideOut 0.5s forwards';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 500);
+  });
+  
+  // Style the dismiss button with the same color theme
+  dismissButton.style.backgroundColor = '#ffffff';
+  dismissButton.style.color = '#dc3545';
+  
+  // Auto dismiss after 5 seconds
+  setTimeout(() => {
+    alertDiv.style.animation = 'slideOut 0.5s forwards';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 500);
+  }, 5000);
 }
 
 function searchAvailability() {
@@ -296,6 +352,13 @@ function openReservationModal(classroom) {
   const endTimeValue = endTime.value || `${nextHour}:00`;
   
   document.getElementById('reservation-time').value = `${startTimeValue} - ${endTimeValue}`;
+
+  // Add capacity information to the modal
+  document.getElementById('reservation-attendees').max = classroom.capacity;
+  document.getElementById('reservation-attendees').placeholder = `Enter number (max ${classroom.capacity})`;
+  
+  // Store classroom capacity in a data attribute for validation
+  document.getElementById('reservation-form').dataset.capacity = classroom.capacity;
   
   // Display modal
   document.getElementById('reservation-modal').style.display = 'flex';
@@ -307,15 +370,22 @@ function getReservations() {
   return JSON.parse(localStorage.getItem('classroomReservations'));
 }
 
-// Replace the handleReservationSubmit function with this updated version
+// Update the handleReservationSubmit function to include capacity validation
 function handleReservationSubmit(e) {
   e.preventDefault();
   
   const purpose = document.getElementById('reservation-purpose').value;
   const attendees = document.getElementById('reservation-attendees').value;
-  
+  const capacity = parseInt(this.dataset.capacity);
+
   if (!purpose || !attendees) {
     alert('Please fill in all fields.');
+    return;
+  }
+
+   // Validate that attendees don't exceed capacity
+   if (attendees > capacity) {
+    alert(`The number of attendees (${attendees}) exceeds the classroom capacity (${capacity}). Please reduce the number of attendees.`);
     return;
   }
   
@@ -385,9 +455,7 @@ function handleReservationSubmit(e) {
   loadReservations();
   
   // Reset form
-  document.getElementById('reservation-purpose').value = '';
-  document.getElementById('reservation-attendees').value = '';
-  document.querySelector('input[name="recurrent"][value="none"]').checked = true;
+  resetReservationForm();
 }
 
 // Update the loadReservations function to use localStorage
@@ -468,6 +536,15 @@ function deleteReservation(id) {
     // Show notification
     alert('Reservation deleted successfully');
   }
+}
+
+// Add this function to reset the form fields
+function resetReservationForm() {
+  document.getElementById('reservation-purpose').value = '';
+  document.getElementById('reservation-attendees').value = '';
+  document.querySelector('input[name="recurrent"][value="none"]').checked = true;
+  document.getElementById('reservation-form').dataset.editId = '';
+  document.querySelector('.reserve-btn').textContent = 'Submit Reservation Request';
 }
 
 // Add storage event listener to detect changes from admin page
