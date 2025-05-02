@@ -187,7 +187,7 @@ function handleLogin(e) {
         }
         
         // For admin email with wrong password
-        if (email === 'admin@pau.edu.ng') {
+        if (email === 'elvis.ebenuwah@pau.edu.ng') {
             showMessage('Invalid admin credentials. Please try again.', 'error');
             document.getElementById('login-password-error').textContent = 'Invalid admin credentials';
             document.getElementById('login-password-error').style.display = 'block';
