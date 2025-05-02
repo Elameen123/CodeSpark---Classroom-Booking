@@ -20,64 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update user information in the header
   document.getElementById('user-name').textContent = loggedInUser.name;
   document.getElementById('user-id').textContent = loggedInUser.id;
-  
-  // Add logout functionality
-  const profilePic = document.querySelector('.profile-pic');
-  if (profilePic) {
-      // Create a dropdown menu for user profile
-      const dropdown = document.createElement('div');
-      dropdown.className = 'profile-dropdown';
-      dropdown.style.display = 'none';
-      dropdown.style.position = 'absolute';
-      dropdown.style.top = '100%';
-      dropdown.style.right = '0';
-      dropdown.style.backgroundColor = 'white';
-      dropdown.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-      dropdown.style.borderRadius = '4px';
-      dropdown.style.padding = '0.5rem 0';
-      dropdown.style.zIndex = '200';
-      dropdown.style.minWidth = '150px';
-      
-      // Add logout option
-      const logoutOption = document.createElement('div');
-      logoutOption.textContent = 'Logout';
-      logoutOption.style.padding = '0.5rem 1rem';
-      logoutOption.style.cursor = 'pointer';
-      logoutOption.style.transition = 'background-color 0.2s';
-      
-      logoutOption.addEventListener('mouseenter', () => {
-          logoutOption.style.backgroundColor = '#f5f5f5';
-      });
-      
-      logoutOption.addEventListener('mouseleave', () => {
-          logoutOption.style.backgroundColor = 'transparent';
-      });
-      
-      logoutOption.addEventListener('click', () => {
-          // Clear logged in user
-          localStorage.removeItem('loggedInUser');
-          // Redirect to login page
-          window.location.href = './loginPage/login.html';
-      });
-      
-      dropdown.appendChild(logoutOption);
-      
-      // Add dropdown to profile container
-      const profileContainer = document.querySelector('.profile-container');
-      profileContainer.appendChild(dropdown);
-      
-      // Toggle dropdown on profile click
-      profilePic.addEventListener('click', (e) => {
-          e.stopPropagation();
-          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-      });
-      
-      // Close dropdown when clicking elsewhere
-      document.addEventListener('click', () => {
-          dropdown.style.display = 'none';
-      });
-  }
-  
+
   // Initialize date and time pickers
   initializeDateTimePickers();
   
@@ -89,9 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Set up event listeners
   setupEventListeners();
-  
-  // Initialize notification count
-  updateNotificationCount();
   
   // Check for reminders on load
   checkRecurrentReminders();
@@ -166,6 +106,10 @@ function setupEventListeners() {
       avatarModal.style.display = 'none';
     }
   });
+
+  document.getElementById('logout-btn').addEventListener('click', function() {
+    performLogout();
+});
   
   // Location filter change
   document.getElementById('location-filter').addEventListener('change', (e) => {
@@ -501,33 +445,6 @@ function loadReservations() {
       }
     });
   }
-
-  // Update notification count
-  updateNotificationCount();
-}
-
-// Update notification count to use localStorage
-function updateNotificationCount() {
-  const reservationsData = getReservations();
-  const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-  
-  const notificationCount = document.getElementById('notification-count');
-  
-  // Only count notifications relevant to this user
-  const pendingCount = reservationsData.pending.filter(res => res.studentId === loggedInUser.id).length;
-  const approvedCount = reservationsData.approved.filter(res => res.studentId === loggedInUser.id).length;
-  const deniedCount = reservationsData.denied.filter(res => res.studentId === loggedInUser.id).length;
-  
-  const count = pendingCount + approvedCount + deniedCount;
-  
-  notificationCount.textContent = count;
-  
-  // Hide badge if no notifications
-  if (count === 0) {
-    notificationCount.style.display = 'none';
-  } else {
-    notificationCount.style.display = 'flex';
-  }
 }
 
 // Add this function to delete reservation from localStorage
@@ -655,9 +572,7 @@ function formatDate(dateString) {
 // Call this in DOMContentLoaded event
 document.addEventListener('DOMContentLoaded', () => {
   // ...existing code...
-  
-  // Initialize notification count
-  updateNotificationCount();
+
 });
 
 function showSuccessAlert() {
@@ -860,9 +775,6 @@ function checkRecurrentReminders() {
         // Save updated reservations to localStorage
         localStorage.setItem('classroomReservations', JSON.stringify(reservations));
         
-        // Update notification count
-        updateNotificationCount();
-        
         // Show reminder alert
         showReminderAlert(reminderNotification);
       }
@@ -925,3 +837,46 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check every minute (in a real app, this would be more sophisticated)
   setInterval(checkRecurrentReminders, 60000);
 });
+
+// Show alert message (reusing the existing alert functionality)
+function showAlert(message) {
+  const alertElement = document.getElementById('success-alert');
+  const alertMessage = document.getElementById('alert-message');
+  
+  if (alertElement && alertMessage) {
+      alertMessage.textContent = message;
+      alertElement.classList.add('show');
+      
+      // Auto-hide after 3 seconds
+      setTimeout(() => {
+          alertElement.classList.remove('show');
+      }, 3000);
+  }
+}
+
+  // Show logout confirmation modal
+  function showLogoutConfirmation() {
+    const modal = document.getElementById('logout-confirm-modal');
+    modal.style.display = 'flex';
+  }
+  
+  // Close logout modal
+  function closeLogoutModal() {
+    const modal = document.getElementById('logout-confirm-modal');
+    modal.style.display = 'none';
+  }
+  
+  // Perform logout - redirect to login page
+  function performLogout() {
+    // You can add any logout logic here, such as clearing session storage
+    localStorage.removeItem('loggedInUser');
+    sessionStorage.removeItem('userToken');
+    
+    // Show a brief message
+    showAlert('Logging out...');
+    
+    // Redirect to login page after a short delay
+    setTimeout(() => {
+        window.location.href = '/loginPage/login.html'; 
+    }, 1000);
+  }

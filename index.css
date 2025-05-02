@@ -56,7 +56,9 @@ body {
 /* Profile Picture Styles */
 .profile-container {
     position: relative;
-    width: 48px;
+    display: flex;
+    align-items: center;
+    width: auto;
     height: 48px;
 }
 
@@ -75,9 +77,8 @@ body {
 }
 
 .change-avatar-btn {
-    position: absolute;
-    bottom: 0;
-    right: 0;
+    position: relative;
+    margin-left: -5px;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -91,6 +92,93 @@ body {
     align-items: center;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.logout-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.3s;
+    margin-left: 1.5rem;
+}
+
+.logout-btn:hover {
+    background-color: #c82333;
+}
+
+.logout-btn i {
+    font-size: 0.9rem;
+}
+
+/* Confirmation Modal for Logout */
+.logout-confirm-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1200;
+    justify-content: center;
+    align-items: center;
+}
+
+.logout-modal-content {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.logout-modal-header {
+    margin-bottom: 1rem;
+}
+
+.logout-modal-header h3 {
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.logout-modal-message {
+    margin-bottom: 1.5rem;
+    color: #555;
+}
+
+.logout-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.logout-cancel-btn {
+    padding: 0.6rem 1.2rem;
+    border: 1px solid #ddd;
+    background-color: #f8f9fa;
+    color: #555;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.logout-proceed-btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    background-color: #dc3545;
+    color: white;
+    cursor: pointer;
+    font-weight: 500;
 }
 
 /* Modify .dashboard-container to use grid instead of flex */
@@ -513,14 +601,6 @@ body {
 
 .delete-btn {
     color: #dc4a4a;
-}
-
-.notifications-bell {
-    position: relative;
-    cursor: pointer;
-    font-size: 1.3rem;
-    margin-right: 1rem;
-    color: #555;
 }
 
 .notification-badge {

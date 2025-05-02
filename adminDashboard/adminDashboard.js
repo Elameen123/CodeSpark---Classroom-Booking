@@ -887,7 +887,7 @@ function closeLogoutModal() {
 // Perform logout - redirect to login page
 function performLogout() {
     // You can add any logout logic here, such as clearing session storage
-    localStorage.removeItem('user');
+    localStorage.removeItem('loggedInUser');
     sessionStorage.removeItem('userToken');
     
     // Show a brief message
