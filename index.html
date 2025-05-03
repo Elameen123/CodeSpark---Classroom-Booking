@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
+    <div id="alert-container"></div>
     <header class="header">
         <a href="#" class="logo">
             <i class="fas fa-calendar-check"></i>
@@ -107,7 +108,7 @@
             
             <div class="notification-group">
                 <h4>Denied</h4>
-                <div id="denied-reservations">
+                <div id="denied-reservations" >
                     <!-- Denied reservations will be added here -->
                 </div>
             </div>
@@ -170,18 +171,6 @@
         </div>
     </div>
     
-    <!-- Success Alert Popup -->
-    <div id="success-alert" class="alert-popup">
-        <div class="alert-content">
-            <i class="fas fa-check-circle"></i>
-            <div class="alert-message">
-                <p>Reservation request submitted successfully! It is pending approval from Student Affairs. You will be notified once it has been approved.</p>
-                <div class="alert-actions">
-                    <button id="close-alert" class="alert-button">Dismiss</button>
-                </div>
-            </div>
-        </div>
-    </div>
     
     <!-- Avatar Upload Modal -->
     <div class="modal" id="avatar-modal">
@@ -202,7 +191,13 @@
         </div>
     </div>
     
+    <!-- Add Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="sharedStorage.js"></script>
     <script src="index.js"></script>
     

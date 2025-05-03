@@ -469,6 +469,121 @@ body {
     animation: fadeIn 0.5s;
 }
 
+/* Alert System */
+#alert-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.alert-popup {
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    min-width: 300px;
+    animation: slideIn 0.3s ease-out;
+    background: #4CAF50;
+    color: white;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.success-alert {
+    background: #4CAF50;
+    color: white;
+  }
+
+/* Reservation Panel Styling */
+.notifications-panel {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    width: 350px;
+}
+
+.reservation-group {
+    margin-bottom: 1.5rem;
+}
+
+.reservation-group h4 {
+    color: #2c3e50;
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reservation-list {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.reservation-item {
+    background: white;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Status Indicators */
+.reservation-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.reservation-status.pending { background: #fff3cd; color: #856404; }
+.reservation-status.approved { background: #d4edda; color: #155724; }
+.reservation-status.denied { background: #f8d7da; color: #721c24; }
+
+/* Modified Reservation Items Coloring */
+#pending-reservations .reservation-item {
+    background: #fff3cd !important;
+    border-left: 4px solid #ffc107;
+    color: #856404;
+}
+
+#approved-reservations .reservation-item {
+    background: #d4edda !important;
+    border-left: 4px solid #28a745;
+    color: #155724;
+}
+
+#denied-reservations .reservation-item {
+    background: #f8d7da !important;
+    border-left: 4px solid #dc3545;
+    color: #721c24;
+}
+
+/* Ensure action buttons remain visible */
+#pending-reservations .action-btn {
+    color: #856404;
+}
+
+#approved-reservations .action-btn {
+    color: #155724;
+}
+
+#denied-reservations .action-btn {
+    color: #721c24;
+}
+
+.reservation-item .action-btn:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
 .notifications-panel h3 {
     margin-bottom: 1.5rem;
     color: #333;
@@ -479,13 +594,6 @@ body {
 
 .notification-group {
     margin-bottom: 1.5rem;
-}
-
-.notification-group h4 {
-    color: #555;
-    margin-bottom: 0.75rem;
-    font-size: 1rem;
-    font-weight: 600;
 }
 
 .reservation-notification {
@@ -504,35 +612,7 @@ body {
     opacity: 0.8;
 }
 
-.reservation-notification.pending {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.reservation-notification.approved {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.reservation-notification.denied {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
 /* Alert Popup */
-.alert-popup {
-    display: none;
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    max-width: 400px;
-    background-color: #d4edda;
-    color: #155724;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    z-index: 1001;
-    animation: slideIn 0.5s;
-}
 
 .alert-content {
     display: flex;
@@ -634,25 +714,11 @@ body {
   }
   
   /* Modify alert-popup to allow stacking */
-  .alert-popup {
-    z-index: calc(1001 + var(--stacking-index, 0));
-    bottom: 30px;
-  }
 
   .reservation-notification.reminder {
     background-color: #e3f2fd;
     color: #4a6fdc;
   }
-
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
 
 @keyframes fadeIn {
     from { opacity: 0; }
@@ -750,6 +816,12 @@ body {
     
 }
 
+@media screen and (max-width: 600px) {
+    .profile-container{
+        display: none;
+    }
+    
+}
 
 /* For very small screens, ensure the cards still look good */
 @media (max-width: 400px) {

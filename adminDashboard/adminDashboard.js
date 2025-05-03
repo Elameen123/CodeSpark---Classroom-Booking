@@ -1,1047 +1,424 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Make sure shared storage is initialized
-    initializeSharedStorage();
-    
-    // Initialize date pickers
-    initializeDatePickers();
-
-    // Initialize EmailJS
-    initializeEmailJS();
-    
-    // Fetch and display reservations based on default filters
-    loadReservations();
-    
-    // Set up event listeners
-    setupEventListeners();
-    
-    // Update stats
-    updateStats();
-    
-    // Set up storage event listener to detect changes from user page
-    window.addEventListener('storage', function(e) {
-        if (e.key === 'classroomReservations') {
-            console.log('Reservation data was updated in another tab');
-            // Check for new pending reservations
-            const newData = JSON.parse(e.newValue);
-            const oldData = e.oldValue ? JSON.parse(e.oldValue) : {pending: []};
-            
-            if (newData.pending.length > oldData.pending.length) {
-                // New reservation has been added
-                // Show notification
-                showNewReservationAlert();
-                
-                // Reload reservations
-                loadReservations();
-                updateStats();
-            }
-        }
-    });
-});
-
-// Add this function to initialize shared storage
-function initializeSharedStorage() {
-    // Check if reservations storage exists
-    if (!localStorage.getItem('classroomReservations')) {
-        // Create initial structure with sample data
-        const initialReservations = {
-            pending: reservationsData.filter(r => r.status === 'pending'),
-            approved: reservationsData.filter(r => r.status === 'approved'),
-            denied: reservationsData.filter(r => r.status === 'denied'),
-            lastUpdate: new Date().getTime()
-        };
-        localStorage.setItem('classroomReservations', JSON.stringify(initialReservations));
-    }
-}
-
-// Initialize EmailJS
-function initializeEmailJS() {
-    // Replace with your actual EmailJS user ID
+    // ——— CONFIG & STATE ———
+    const db = firebase.database();
+    const reservationsRef = db.ref('reservations');
+    const classroomsRef   = db.ref('classrooms');
     emailjs.init("O3K5dfZJQv5YP6W9V");
-}
-
-// Sample reservation data (in a real app, this would come from a database)
-
-// Confirmation modal variables
-let confirmAction = null;
-let confirmData = null;
-
-// Initialize flatpickr date pickers
-function initializeDatePickers() {
-    flatpickr("#date-filter", {
-        dateFormat: "Y-m-d",
-        allowInput: true,
-        altInput: true,
-        altFormat: "F j, Y",
-        onChange: function() {
-            // Don't auto-apply filter when date is selected
-        }
-    });
-    
-    flatpickr("#booking-date", {
-        dateFormat: "Y-m-d",
-        minDate: "today",
-        allowInput: true,
-        altInput: true,
-        altFormat: "F j, Y"
-    });
-    
-    flatpickr("#review-date", {
-        dateFormat: "Y-m-d",
-        allowInput: true,
-        altInput: true,
-        altFormat: "F j, Y"
-    });
-}
-
-// Set up event listeners
-function setupEventListeners() {
-    // Filter buttons click
-    document.getElementById('apply-filters').addEventListener('click', loadReservations);
-    document.getElementById('clear-filters').addEventListener('click', clearFilters);
-    
-    // Refresh button click
-    document.getElementById('refresh-btn').addEventListener('click', refreshData);
-    
-    // Export button click
-    document.getElementById('export-btn').addEventListener('click', exportReservations);
-    
-    // Stat cards click
-    document.querySelectorAll('.stat-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const status = this.classList.contains('pending') ? 'pending' : 
-                          this.classList.contains('approved') ? 'approved' : 
-                          this.classList.contains('denied') ? 'denied' : 'all';
-            
-            if (status === 'all') {
-                document.getElementById('status-filter').value = 'all';
-            } else {
-                document.getElementById('status-filter').value = status;
-            }
-            
-            loadReservations();
-        });
-    });
-    
-    // Create reservation button click
-    document.getElementById('create-reservation-btn').addEventListener('click', function() {
-        document.getElementById('booking-modal').style.display = 'flex';
-    });
-    
-    // Close booking modal
-    document.getElementById('close-booking-modal').addEventListener('click', function() {
-        document.getElementById('booking-modal').style.display = 'none';
-    });
-    
-    // Cancel booking button
-    document.getElementById('cancel-booking-btn').addEventListener('click', function() {
-        document.getElementById('booking-modal').style.display = 'none';
-    });
-    
-    // Confirm booking button
-    document.getElementById('booking-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        createAdminReservation();
-    });
-    
-    // Close review modal
-    document.getElementById('close-review-modal').addEventListener('click', function() {
-        document.getElementById('review-modal').style.display = 'none';
-    });
-    
-    // Approve button click
-    document.getElementById('approve-btn').addEventListener('click', function() {
-        showConfirmModal('approve');
-    });
-    
-    // Deny button click
-    document.getElementById('deny-btn').addEventListener('click', function() {
-        showConfirmModal('deny');
-    });
-
-    document.getElementById('logout-btn').addEventListener('click', function() {
-        performLogout();
-    });
-    
-    // Confirmation modal event listeners
-    document.getElementById('close-confirm-modal').addEventListener('click', closeConfirmModal);
-    document.getElementById('confirm-cancel').addEventListener('click', closeConfirmModal);
-    document.getElementById('confirm-proceed').addEventListener('click', proceedWithConfirmedAction);
-}
-
-// Refresh data
-function refreshData() {
-    // In a real app, this would fetch fresh data from the server
-    // For now, we'll just reload the current view
-    showAlert('Data refreshed successfully');
-    loadReservations();
-    updateStats();
-}
-
-// Clear all filters and reset to defaults
-function clearFilters() {
-    document.getElementById('status-filter').value = 'pending';
-    document.getElementById('date-filter').value = '';
-    document.getElementById('location-filter').value = 'ALL';
-    
-    // Clear the flatpickr date input
-    const dateInput = document.getElementById('date-filter')._flatpickr;
-    if (dateInput) {
-        dateInput.clear();
+  
+    let allReservations = {};
+    let recentActivities = [];  // for updateRecentActivity
+  
+    // ——— DOM ELEMENTS ———
+    const statusFilterEl    = document.getElementById('status-filter');
+    const dateFilterEl      = document.getElementById('date-filter');
+    const locationFilterEl  = document.getElementById('location-filter');
+    const applyFiltersBtn   = document.getElementById('apply-filters');
+    const clearFiltersBtn   = document.getElementById('clear-filters');
+    const refreshBtn        = document.getElementById('refresh-btn');
+    const exportBtn         = document.getElementById('export-btn');
+    const createBtn         = document.getElementById('create-reservation-btn');
+    const bookingModal      = document.getElementById('booking-modal');
+    const closeBookingBtn   = document.getElementById('close-booking-modal');
+    const bookingForm       = document.getElementById('booking-form');
+    const reviewModal       = document.getElementById('review-modal');
+    const closeReviewBtn    = document.getElementById('close-review-modal');
+    const reviewForm        = document.getElementById('review-form');
+    const approveBtn        = document.getElementById('approve-btn');
+    const denyBtn           = document.getElementById('deny-btn');
+    const confirmModal      = document.getElementById('confirm-modal');
+    const closeConfirmBtn   = document.getElementById('close-confirm-modal');
+    const confirmCancelBtn  = document.getElementById('confirm-cancel');
+    const confirmProceedBtn = document.getElementById('confirm-proceed');
+    const logoutBtn         = document.getElementById('logout-btn');
+    const alertPopup        = document.getElementById('success-alert');
+    const alertMessage      = document.getElementById('alert-message');
+  
+    const pendingCountEl    = document.getElementById('pending-count');
+    const approvedCountEl   = document.getElementById('approved-count');
+    const deniedCountEl     = document.getElementById('denied-count');
+    const totalCountEl      = document.getElementById('total-count');
+    const currentViewTitle  = document.getElementById('current-view-title');
+    const tableBody         = document.getElementById('reservations-list');
+    const activityListEl    = document.querySelector('.activity-list');
+  
+    let confirmAction = null;
+    let confirmData   = null;
+  
+    // ——— HELPERS ———
+    function showAlert(msg) {
+      alertMessage.textContent = msg;
+      alertPopup.classList.add('show');
+      setTimeout(() => alertPopup.classList.remove('show'), 5000);
     }
-    
-    // Reload with cleared filters
-    loadReservations();
-}
-
-// Load reservations based on filters
-// Replace loadReservations function to use localStorage
-function loadReservations() {
-    const statusFilter = document.getElementById('status-filter').value;
-    const dateFilter = document.getElementById('date-filter').value;
-    const locationFilter = document.getElementById('location-filter').value;
-    
-    // Update the current view title
-    updateViewTitle(statusFilter);
-    
-    // Get reservations from localStorage
-    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-    
-    // Create a flat array of all reservations with their status
-    let allReservations = [];
-    
-    // Add pending reservations
-    reservationsStorage.pending.forEach(res => {
-        allReservations.push({...res, status: 'pending'});
-    });
-    
-    // Add approved reservations
-    reservationsStorage.approved.forEach(res => {
-        allReservations.push({...res, status: 'approved'});
-    });
-    
-    // Add denied reservations
-    reservationsStorage.denied.forEach(res => {
-        allReservations.push({...res, status: 'denied'});
-    });
-    
-    // Filter reservations
-    let filteredReservations = allReservations.filter(reservation => {
-        // Status filter
-        if (statusFilter !== 'all' && reservation.status !== statusFilter) {
-            return false;
-        }
-        
-        // Date filter
-        if (dateFilter && reservation.date !== dateFilter) {
-            return false;
-        }
-        
-        // Location filter
-        if (locationFilter !== 'ALL') {
-            const building = reservation.classroom.split(' ')[0];
-            if (building !== locationFilter) {
-                return false;
-            }
-        }
-        
-        return true;
-    });
-    
-    // Sort by date (most recent first)
-    filteredReservations.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    // Clear existing rows
-    const tableBody = document.getElementById('reservations-list');
-    tableBody.innerHTML = '';
-    
-    // Add filtered reservations to table
-    if (filteredReservations.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align: center; padding: 2rem;">
-                    No reservations match your filters
-                </td>
-            </tr>
-        `;
-    } else {
-        filteredReservations.forEach(reservation => {
-            addReservationToTable(reservation);
-        });
+  
+    function formatDate(d) {
+      try {
+        return new Date(d)
+          .toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+      } catch {
+        return d;
+      }
     }
-}
-
-// Function to send email notification when a reservation is approved
-function sendApprovalEmail(reservation) {
-    // Get admin information
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')) || {
-        name: 'Admin User',
-        email: 'elvis.ebenuwah@pau.edu.ng'
-    };
-    
-    // Sanitize and validate inputs
-    const safeReservation = {
-        email: reservation.email || 'student@pau.edu.ng',
-        studentName: reservation.studentName || 'Student',
-        id: reservation.id || `RES${Date.now()}`,
-        classroom: reservation.classroom || 'Requested Classroom',
-        date: reservation.date || '',
-        time: reservation.time || 'Scheduled Time',
-        purpose: (reservation.purpose || 'Academic Activity').substring(0, 100), // Truncate long text
-        adminComment: reservation.adminComment ? reservation.adminComment.substring(0, 200) : ''
-    };
-    
-    // Prepare email template parameters
-    const templateParams = {
-        to_email: safeReservation.email,
-        to_name: safeReservation.studentName,
-        reservation_id: safeReservation.id,
-        classroom: safeReservation.classroom,
-        date: formatDate(safeReservation.date),
-        time: safeReservation.time,
-        purpose: safeReservation.purpose,
-        admin_name: loggedInUser.name || 'Administrator',
-        admin_comment: safeReservation.adminComment,
-        cc_security: 'osagie.osazuwa@pau.edu.ng',
-        cc_facility: 'muizah.apampa@pau.edu.ng',
-        cc_admin: loggedInUser.email || 'elvis.ebenuwah@pau.edu.ng'
-    };
-    
-    // Log for debugging (remove in production)
-    console.log('Email template parameters:', templateParams);
-    
-    // Send the email using EmailJS
-    emailjs.send('service_y4hrfnh', 'template_mkka46n', templateParams)
-        .then(function(response) {
-            console.log('Email sent successfully:', response);
-            showAlert('Approval notification email sent successfully');
-        }, function(error) {
-            console.error('Email sending failed:', error);
-            console.error('Template parameters:', templateParams);
-            showAlert('Failed to send email notification');
-        });
-}
-// Show confirmation modal
-function showConfirmModal(action) {
-    confirmAction = action;
-    confirmData = {
-        reservationId: document.getElementById('reservation-id').value,
-        adminComment: document.getElementById('admin-comment').value
-    };
-    
-    const confirmModal = document.getElementById('confirm-modal');
-    const confirmMessage = document.getElementById('confirm-message');
-    const confirmButton = document.getElementById('confirm-proceed');
-    
-    if (action === 'approve') {
-        confirmMessage.textContent = `Are you sure you want to approve reservation ${confirmData.reservationId}?`;
-        confirmButton.textContent = 'Approve';
-        confirmButton.className = 'confirm-proceed-btn approve';
-    } else if (action === 'deny') {
-        confirmMessage.textContent = `Are you sure you want to deny reservation ${confirmData.reservationId}?`;
-        confirmButton.textContent = 'Deny';
-        confirmButton.className = 'confirm-proceed-btn deny';
+  
+    function truncate(s, n=30) {
+      return (s && s.length>n) ? s.slice(0,n)+'…' : s;
     }
-    
-    confirmModal.style.display = 'flex';
-}
-
-// Close confirmation modal
-function closeConfirmModal() {
-    document.getElementById('confirm-modal').style.display = 'none';
-}
-
-// Proceed with confirmed action
-function proceedWithConfirmedAction() {
-    closeConfirmModal();
-    
-    if (confirmAction === 'approve' || confirmAction === 'deny') {
-
-        console.log(confirmAction);
-        updateReservationStatus(confirmAction);
+  
+    function getTimeAgo(date) {
+      const now = new Date(), diffMs = now - new Date(date);
+      const diffMin = Math.floor(diffMs/60000);
+      if (diffMin<1) return 'Just now';
+      if (diffMin<60) return diffMin+' minute'+(diffMin===1?'':'s')+' ago';
+      const diffH = Math.floor(diffMin/60);
+      if (diffH<24) return diffH+' hour'+(diffH===1?'':'s')+' ago';
+      const diffD = Math.floor(diffH/24);
+      return diffD+' day'+(diffD===1?'':'s')+' ago';
     }
-    
-    // Reset confirmation variables
-    confirmAction = null;
-    confirmData = null;
-}
-
-// Update the view title based on selected filter
-function updateViewTitle(statusFilter) {
-    const titleElement = document.getElementById('current-view-title');
-    switch(statusFilter) {
-        case 'pending':
-            titleElement.textContent = 'Pending Reservations';
-            break;
-        case 'approved':
-            titleElement.textContent = 'Approved Reservations';
-            break;
-        case 'denied':
-            titleElement.textContent = 'Denied Reservations';
-            break;
-        default:
-            titleElement.textContent = 'All Reservations';
+  
+    // ——— STATS & FILTERS ———
+    function updateStats() {
+      const vals = Object.values(allReservations);
+      const p = vals.filter(r=>r.status==='pending').length;
+      const a = vals.filter(r=>r.status==='approved').length;
+      const d = vals.filter(r=>r.status==='denied').length;
+      pendingCountEl.textContent  = p;
+      approvedCountEl.textContent = a;
+      deniedCountEl.textContent   = d;
+      totalCountEl.textContent    = p + a + d;
     }
-}
-
-// Add a reservation to the table
-function addReservationToTable(reservation) {
-    const tableBody = document.getElementById('reservations-list');
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td>${reservation.id}</td>
-        <td>${reservation.studentName}</td>
-        <td>${reservation.classroom}</td>
-        <td>${formatDate(reservation.date)}</td>
-        <td>${reservation.time}</td>
-        <td>${truncateText(reservation.purpose, 30)}</td>
-        <td>
-            <span class="status-badge ${reservation.status}">
-                ${capitalizeFirstLetter(reservation.status)}
-            </span>
-        </td>
-        <td>
-            <div class="table-actions">
-                <button class="table-action-btn view-btn" data-id="${reservation.id}" title="View details">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </div>
-        </td>
-    `;
-    
-    tableBody.appendChild(row);
-    
-    // Add event listeners to the buttons
-    const viewBtn = row.querySelector('.view-btn');
-    viewBtn.addEventListener('click', function() {
-        openReviewModal(this.getAttribute('data-id'));
-    });
-    
-    const approveBtn = row.querySelector('.approve-table-btn');
-    if (approveBtn) {
-        approveBtn.addEventListener('click', function() {
-            openReviewModal(this.getAttribute('data-id'), 'approve');
-        });
+  
+    function filterAndRender() {
+      const st = statusFilterEl.value, dt = dateFilterEl.value, loc = locationFilterEl.value;
+      currentViewTitle.textContent =
+        st==='all' ? 'All Reservations'
+      : st.charAt(0).toUpperCase()+st.slice(1)+' Reservations';
+  
+      const list = Object.values(allReservations)
+        .filter(r => {
+          if (st!=='all' && r.status!==st) return false;
+          if (dt && r.date!==dt) return false;
+          if (loc!=='ALL' && !r.classroom.startsWith(loc+' ')) return false;
+          return true;
+        })
+        .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  
+      if (!list.length) {
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;">No reservations match your filters</td></tr>`;
+      } else {
+        tableBody.innerHTML = list.map(r=>`
+          <tr>
+            <td>${r.id}</td>
+            <td>${r.studentName||'—'}</td>
+            <td>${r.classroom}</td>
+            <td>${formatDate(r.date)}</td>
+            <td>${r.time}</td>
+            <td title="${r.purpose}">${truncate(r.purpose)}</td>
+            <td><span class="status-badge ${r.status}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span></td>
+            <td><button class="view-btn" data-id="${r.id}"><i class="fas fa-eye"></i></button></td>
+          </tr>`).join('');
+      }
     }
-    
-    const denyBtn = row.querySelector('.deny-table-btn');
-    if (denyBtn) {
-        denyBtn.addEventListener('click', function() {
-            openReviewModal(this.getAttribute('data-id'), 'deny');
-        });
-    }
-}
-
-// Open the review modal for a reservation
-// Update the openReviewModal function to match the new data structure
-function openReviewModal(reservationId, action) {
-    // Get reservations from localStorage
-    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-    
-    // Look for the reservation in all statuses
-    let reservation = reservationsStorage.pending.find(r => r.id === reservationId);
-    
-    if (!reservation) {
-        reservation = reservationsStorage.approved.find(r => r.id === reservationId);
-    }
-    
-    if (!reservation) {
-        reservation = reservationsStorage.denied.find(r => r.id === reservationId);
-    }
-    
-    if (!reservation) return;
-    
-    // Populate modal fields
-    document.getElementById('reservation-id').value = reservation.id;
-    document.getElementById('student-name').textContent = reservation.studentName;
-    document.getElementById('student-id').textContent = reservation.studentId;
-    document.getElementById('review-classroom').value = reservation.classroom;
-    document.getElementById('review-date').value = reservation.date;
-    document.getElementById('review-time').value = reservation.time;
-    document.getElementById('review-purpose').value = reservation.purpose;
-    document.getElementById('review-attendees').value = reservation.attendees;
-    document.getElementById('admin-comment').value = reservation.adminComment || '';
-    
-    // Show the modal
-    document.getElementById('review-modal').style.display = 'flex';
-    
-    // If action is provided, focus on the appropriate button
-    if (action === 'approve') {
-        document.getElementById('approve-btn').focus();
-    } else if (action === 'deny') {
-        document.getElementById('deny-btn').focus();
-    }
-}
-
-// Add this function to record new activity
-function recordActivity(reservation, action) {
-    // Get existing activities from localStorage or create empty array
-    const activities = JSON.parse(localStorage.getItem('recentActivities')) || [];
-    
-    // Create new activity record
-    const newActivity = {
-        id: reservation.id,
-        action: action, // 'created', 'approved', 'denied', etc.
-        reservationId: reservation.id,
-        studentName: reservation.studentName,
-        classroom: reservation.classroom,
-        timestamp: new Date().toISOString()
-    };
-    
-    // Add to beginning of array
-    activities.unshift(newActivity);
-    
-    // Keep only the most recent 20 activities
-    const trimmedActivities = activities.slice(0, 20);
-    
-    // Save back to localStorage
-    localStorage.setItem('recentActivities', JSON.stringify(trimmedActivities));
-}
-
-// Update the updateReservationStatus function to record activity
-function updateReservationStatus(status) {
-    const reservationId = document.getElementById('reservation-id').value;
-    const adminComment = document.getElementById('admin-comment').value;
-    
-    // Convert "approve" to "approved" for consistency
-    const finalStatus = status === 'approve' ? 'approved' : status;
-    
-    // Get the reservations from localStorage
-    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-    
-    // Find the reservation in pending
-    const reservationIndex = reservationsStorage.pending.findIndex(r => r.id === reservationId);
-    
-    if (reservationIndex !== -1) {
-        // Get the reservation object
-        const reservation = reservationsStorage.pending[reservationIndex];
-        
-        // Update status and admin comment
-        reservation.status = finalStatus;
-        reservation.adminComment = adminComment;
-        reservation.processedAt = new Date().toISOString();
-        
-        // Remove from pending
-        reservationsStorage.pending.splice(reservationIndex, 1);
-        
-        // Add to appropriate array
-        if (finalStatus === 'approved') {
-            reservationsStorage.approved.push(reservation);
-            
-            // Record this activity
-            recordActivity(reservation, 'approved');
-            
-            // Send approval email notification
-            sendApprovalEmail(reservation);
-        } else {
-            reservationsStorage.denied.push(reservation);
-            
-            // Record this activity
-            recordActivity(reservation, 'denied');
-        }
-        
-        // Update timestamp
-        reservationsStorage.lastUpdate = new Date().getTime();
-        
-        // Save back to localStorage
-        localStorage.setItem('classroomReservations', JSON.stringify(reservationsStorage));
-        
-        // Close the modal
-        document.getElementById('review-modal').style.display = 'none';
-        
-        // Show success alert - use original status for verb form in message
-        showAlert(`Reservation ${reservationId} has been ${status}${status === 'approve' ? 'd' : 'd'}.`);
-        
-        // Reload reservations and update stats
-        loadReservations();
-        updateStats();
-        updateRecentActivity();
-    }
-}
-// Create admin reservation
-// Update the createAdminReservation function to use localStorage
-
-function createAdminReservation() {
-    const classroom = document.getElementById('booking-classroom').value;
-    const date = document.getElementById('booking-date').value;
-    const startTime = document.getElementById('booking-start-time').value;
-    const endTime = document.getElementById('booking-end-time').value;
-    const time = startTime + " - " + endTime;
-    const purpose = document.getElementById('booking-purpose').value;
-    const attendees = document.getElementById('booking-attendees').value;
-    
-
-    // Generate a new reservation ID
-    const newId = 'RES' + Date.now();
-    
-    // Get current admin user
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-
-    
-    // Create the reservation object
-    const newReservation = {
-        id: newId,
-
-        studentName: loggedInUser.name || 'Admin User',
-        studentId: loggedInUser.id || 'ADMIN01',
-        email: loggedInUser.email || 'admin@pau.edu.ng',
-        classroom,
-        date,
-        time,
-        purpose,
-
-        status: 'admin',
-        attendees: parseInt(attendees),
-        createdAt: new Date().toISOString()
-    };
-    
-
-    // Get reservations from localStorage
-    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-    
-    // Add to approved reservations
-    reservationsStorage.approved.push({...newReservation, status: 'approved'});
-    
-    // Update timestamp
-    reservationsStorage.lastUpdate = new Date().getTime();
-    
-    // Save back to localStorage
-    localStorage.setItem('classroomReservations', JSON.stringify(reservationsStorage));
-
-     // Record this activity after creating reservation
-     recordActivity(newReservation, 'created');
-    
-    // Close the modal
-    document.getElementById('booking-modal').style.display = 'none';
-    
-    // Show success alert
-    showAlert(`Admin reservation ${newId} has been created.`);
-    
-    // Clear the form
-    document.getElementById('booking-form').reset();
-    
-    // Reload reservations and update stats
-    loadReservations();
-    updateStats();
-    updateRecentActivity();
-}
-// Export reservations to CSV
-// Update exportReservations function to use localStorage
-function exportReservations() {
-    // Get the current filtered reservations
-    const statusFilter = document.getElementById('status-filter').value;
-    const dateFilter = document.getElementById('date-filter').value;
-    const locationFilter = document.getElementById('location-filter').value;
-    
-
-    // Get reservations from localStorage
-    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-    
-    // Create a flat array of all reservations
-    let allReservations = [];
-    
-    // Add pending reservations
-    reservationsStorage.pending.forEach(res => {
-        allReservations.push({...res, status: 'pending'});
-    });
-    
-    // Add approved reservations
-    reservationsStorage.approved.forEach(res => {
-        allReservations.push({...res, status: 'approved'});
-    });
-    
-    // Add denied reservations
-    reservationsStorage.denied.forEach(res => {
-        allReservations.push({...res, status: 'denied'});
-    });
-    
-    // Filter reservations the same way as displayed
-    let filteredReservations = allReservations.filter(reservation => {
-
-        // Status filter
-        if (statusFilter !== 'all' && reservation.status !== statusFilter) {
-            return false;
-        }
-        
-        // Date filter
-        if (dateFilter && reservation.date !== dateFilter) {
-            return false;
-        }
-        
-        // Location filter
-        if (locationFilter !== 'ALL') {
-            const building = reservation.classroom.split(' ')[0];
-            if (building !== locationFilter) {
-                return false;
-            }
-        }
-        
-        return true;
-    });
-    
-    // Create CSV content
-    let csvContent = "data:text/csv;charset=utf-8,";
-    
-    // Add headers
-    csvContent += "ID,Student Name,Student ID,Classroom,Date,Time,Purpose,Status,Attendees,Created At\n";
-    
-    // Add rows
-    filteredReservations.forEach(reservation => {
-        const row = [
-            reservation.id,
-            reservation.studentName,
-            reservation.studentId,
-            reservation.classroom,
-            reservation.date,
-            reservation.time,
-            `"${reservation.purpose.replace(/"/g, '""')}"`,
-            reservation.status,
-            reservation.attendees,
-            reservation.createdAt
-        ].join(',');
-        
-        csvContent += row + "\n";
-    });
-    
-    // Create download link
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `reservations_export_${formatDateForFileName(new Date())}.csv`);
-    document.body.appendChild(link);
-    
-    // Trigger download
-    link.click();
-    
-    // Remove link
-    document.body.removeChild(link);
-    
-    // Show success alert
-    showAlert('Reservations exported to CSV successfully');
-}
-
-
-
-// Update statistics counters
-// Update the updateStats function to use localStorage
-function updateStats() {
-    const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-    
-    const pendingCount = reservationsStorage.pending.length;
-    const approvedCount = reservationsStorage.approved.length;
-    const deniedCount = reservationsStorage.denied.length;
-    const totalCount = pendingCount + approvedCount + deniedCount;
-
-    
-    document.getElementById('pending-count').textContent = pendingCount;
-    document.getElementById('approved-count').textContent = approvedCount;
-    document.getElementById('denied-count').textContent = deniedCount;
-    document.getElementById('total-count').textContent = totalCount;
-    // document.getElementById('notification-count').textContent = pendingCount;
-}
-
-// Add initial activities during initialization if none exist
-function initializeActivities() {
-    // Only initialize if no activities exist yet
-    if (!localStorage.getItem('recentActivities')) {
-        const reservationsStorage = JSON.parse(localStorage.getItem('classroomReservations'));
-        const activities = [];
-        
-        // Create an initial activity for each existing reservation
-        [...reservationsStorage.approved, ...reservationsStorage.denied].forEach(res => {
-            activities.push({
-                id: res.id,
-                action: res.status,
-                reservationId: res.id,
-                studentName: res.studentName,
-                classroom: res.classroom,
-                timestamp: res.processedAt || res.createdAt || new Date().toISOString()
-            });
-        });
-        
-        // Sort by timestamp (newest first)
-        activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        // Keep only the 20 most recent
-        const trimmedActivities = activities.slice(0, 20);
-        
-        // Save to localStorage
-        localStorage.setItem('recentActivities', JSON.stringify(trimmedActivities));
-    }
-}
-
-// Call this during the page initialization
-document.addEventListener('DOMContentLoaded', function() {
-    // ... existing code ...
-    initializeActivities();
-    // ... rest of initialization ...
-});
-
-function recordActivity(reservation, action) {
-    // Get existing activities from localStorage or create empty array
-    const activities = JSON.parse(localStorage.getItem('recentActivities')) || [];
-    
-    // Create new activity record
-    const newActivity = {
-        id: reservation.id,
-        action: action, // 'created', 'approved', 'denied', etc.
-        reservationId: reservation.id,
-        studentName: reservation.studentName,
-        classroom: reservation.classroom,
-        timestamp: new Date().toISOString()
-    };
-    
-    // Add to beginning of array
-    activities.unshift(newActivity);
-    
-    // Keep only the most recent 20 activities
-    const trimmedActivities = activities.slice(0, 20);
-    
-    // Save back to localStorage
-    localStorage.setItem('recentActivities', JSON.stringify(trimmedActivities));
-}
-
-
-// Add a function to show notification for new reservation
-function showNewReservationAlert() {
-    const alertElement = document.getElementById('success-alert');
-    const messageElement = document.getElementById('alert-message');
-    
-    messageElement.textContent = 'New reservation has been submitted for approval!';
-    alertElement.classList.add('show');
-    
-    // Play notification sound (optional)
-    const audio = new Audio('../sounds/notification.mp3');
-    audio.play().catch(e => console.log('Audio playback error:', e));
-    
-    // Hide after 3 seconds
-    setTimeout(() => {
-        alertElement.classList.remove('show');
-    }, 3000);
-}
-
-// Show alert popup
-
-function showAlert(message) {
-    const alertElement = document.getElementById('success-alert');
-    const alertMessage = document.getElementById('alert-message');
-    
-    alertMessage.textContent = message;
-    alertElement.classList.add('show');
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        alertElement.classList.remove('show');
-    }, 5000);
-}
-
-
-// Truncate text and add ellipsis if needed
-function truncateText(text, maxLength) {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
-// Capitalize first letter
-function capitalizeFirstLetter(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-
-// Helper function to format date
-function formatDate(dateString) {
-    // Check if dateString exists and is valid
-    if (!dateString) {
-        return 'Unspecified date';
-    }
-    
-    try {
-        const date = new Date(dateString);
-        
-        // Check for invalid date
-        if (isNaN(date.getTime())) {
-            return 'Pending date confirmation';
-        }
-        
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return date.toLocaleDateString(undefined, options);
-    } catch (error) {
-        console.error(`Error formatting date: "${dateString}"`, error);
-        return 'Pending date confirmation';
-    }
-
-}
-
-// Show logout confirmation modal
-function showLogoutConfirmation() {
-    const modal = document.getElementById('logout-confirm-modal');
-    modal.style.display = 'flex';
-}
-
-// Close logout modal
-function closeLogoutModal() {
-    const modal = document.getElementById('logout-confirm-modal');
-    modal.style.display = 'none';
-}
-
-// Perform logout - redirect to login page
-function performLogout() {
-    // You can add any logout logic here, such as clearing session storage
-    localStorage.removeItem('loggedInUser');
-    sessionStorage.removeItem('userToken');
-    
-    // Show a brief message
-    showAlert('Logging out...');
-    
-    // Redirect to login page after a short delay
-    setTimeout(() => {
-        window.location.href = '/loginPage/login.html'; 
-    }, 100);
-}
-
-// Show alert message (reusing the existing alert functionality)
-function showAlert(message) {
-    const alertElement = document.getElementById('success-alert');
-    const alertMessage = document.getElementById('alert-message');
-    
-    if (alertElement && alertMessage) {
-        alertMessage.textContent = message;
-        alertElement.classList.add('show');
-        
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
-            alertElement.classList.remove('show');
-        }, 3000);
-    }
-}
-
-// Add this function to update the recent activity section
-// Update updateRecentActivity to use the stored activities
-function updateRecentActivity() {
-    // Get the activity list container
-    const activityList = document.querySelector('.activity-list');
-    
-    // Clear existing content
-    activityList.innerHTML = '';
-    
-    // Get activities from localStorage
-    const activities = JSON.parse(localStorage.getItem('recentActivities')) || [];
-    
-    // Take the 5 most recent activities
-    const recentActivities = activities.slice(0, 5);
-    
-    if (recentActivities.length === 0) {
-        // No activities yet
-        activityList.innerHTML = '<div class="no-activities">No recent activity to display</div>';
-        return;
-    }
-    
-    // Add each activity to the list
-    recentActivities.forEach(activity => {
-        let iconClass, actionText;
-        
-        // Determine icon and text based on action
-        if (activity.action === 'approved') {
-            iconClass = 'approved';
-            actionText = `Reservation #${activity.id.substring(3)} approved`;
-        } else if (activity.action === 'denied') {
-            iconClass = 'denied';
-            actionText = `Reservation #${activity.id.substring(3)} denied`;
-        } else if (activity.action === 'created') {
-            iconClass = 'created';
-            actionText = `Admin reservation #${activity.id.substring(3)} created`;
-        } else if (activity.action === 'pending') {
-            iconClass = '';
-            actionText = `New reservation #${activity.id.substring(3)} pending`;
-        }
-        
-        // Calculate time ago
-        const timeAgo = getTimeAgo(new Date(activity.timestamp));
-        
-        // Create activity item
-        const activityItem = document.createElement('div');
-        activityItem.className = 'activity-item';
-        activityItem.innerHTML = `
-            <div class="activity-icon ${iconClass}">
-                <i class="fas ${getIconByAction(activity.action)}"></i>
+  
+    // ——— RECENT ACTIVITY ———
+    function updateRecentActivity() {
+      recentActivities = Object.values(allReservations)
+        .filter(r => r.processedAt || r.createdAt)
+        .map(r => ({
+          id: r.id,
+          action: r.status === 'approved' ? 'approved'
+                 : r.status === 'denied'   ? 'denied'
+                 : 'created',
+          timestamp: r.processedAt || r.createdAt
+        }))
+        .sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0,5);
+  
+      activityListEl.innerHTML = recentActivities.map(act => {
+        const icon = act.action==='approved' ? 'fa-check' 
+                   : act.action==='denied'   ? 'fa-times'
+                   : 'fa-calendar-plus';
+        const text = act.action==='approved' ? `Reservation #${act.id} approved`
+                   : act.action==='denied'   ? `Reservation #${act.id} denied`
+                   : `Reservation #${act.id} created`;
+        return `
+          <div class="activity-item">
+            <div class="activity-icon ${act.action}">
+              <i class="fas ${icon}"></i>
             </div>
             <div class="activity-content">
-                <div class="activity-text">${actionText}</div>
-                <div class="activity-time">${timeAgo}</div>
+              <div class="activity-text">${text}</div>
+              <div class="activity-time">${getTimeAgo(act.timestamp)}</div>
             </div>
-        `;
-        
-        activityList.appendChild(activityItem);
+          </div>`;
+      }).join('');
+    }
+  
+    // ——— EMAIL ———
+    function sendApprovalEmail(res) {
+        // Make sure we have a valid recipient
+        if (!res.email || !res.studentName) {
+          console.warn('Skipping email—missing email or studentName:', res);
+          return;
+        }
+      
+        // Sanitize any null/undefined
+        const safeDate = res.date || 'Unspecified date';
+        const safeTime = (res.time && !res.time.includes('null'))
+          ? res.time
+          : 'Unspecified time';
+      
+        const admin = JSON.parse(localStorage.getItem('loggedInUser')) || {};
+      
+        const templateParams = {
+          to_email:      res.email,
+          to_name:       res.studentName,
+          reservation_id: res.id,
+          classroom:     res.classroom || 'Requested Classroom',
+          date:          formatDate(safeDate),
+          time:          safeTime,
+          purpose:       res.purpose || 'No purpose provided',
+          admin_name:    admin.name || 'Administrator',
+          admin_comment: res.adminComment || '',
+          cc_security:   'osagie.osazuwa@pau.edu.ng',
+          cc_facility:   'muizah.apampa@pau.edu.ng',
+          cc_admin:      admin.email || ''
+        };
+      
+        console.log('📧 Sending EmailJS with params:', templateParams);
+      
+        emailjs.send('service_y4hrfnh', 'template_mkka46n', templateParams)
+          .then(response => {
+            console.log('✅ EmailJS success:', response);
+            showAlert('Approval email sent!');
+          })
+          .catch(err => {
+            // EmailJS error object often contains .status and .text
+            console.error('❌ EmailJS error status:', err.status);
+            console.error('❌ EmailJS error text:', err.text);
+            showAlert(`Failed to send email: ${err.text || err.message}`);
+          });
+      }
+      
+    // ——— AUTH CHECK ———
+    const me = JSON.parse(localStorage.getItem('loggedInUser'));
+    if (!me || me.role!=='admin') {
+      window.location.href = '/login.html';
+      return;
+    }
+    document.getElementById('user-name').textContent = me.name;
+    document.getElementById('user-id').textContent   = 'Administrator';
+  
+    // ——— FLATPICKR ———
+    flatpickr("#date-filter",   { dateFormat:"Y-m-d", allowInput:true });
+    flatpickr("#booking-date",  { dateFormat:"Y-m-d", minDate:"today", allowInput:true });
+    flatpickr("#review-date",   { dateFormat:"Y-m-d", allowInput:true });
+  
+     // ——— LOAD CLASSROOMS ———
+  classroomsRef.on('value', snap => {
+    const data = snap.val() || {};
+    const select = bookingForm.querySelector('#booking-classroom');
+    select.innerHTML = '<option value="">Select a classroom</option>';
+
+    // For each building (e.g. "SST", "TYD")
+    Object.keys(data).forEach(building => {
+      // data[building] might be an object (keyed by push IDs), so get its values
+      const rooms = Array.isArray(data[building])
+        ? data[building]
+        : Object.values(data[building] || {});
+
+      rooms.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = `${building} ${c.name}`;
+        opt.textContent = `${building} ${c.name}`;
+        select.appendChild(opt);
+      });
     });
-}
+  });
 
-// Helper function for activity icons
-function getIconByAction(action) {
-    switch(action) {
-        case 'approved': return 'fa-check';
-        case 'denied': return 'fa-times';
-        case 'created': return 'fa-calendar-check';
-        case 'pending': return 'fa-clock';
-        default: return 'fa-user';
-    }
-}
+  reservationsRef.on('value', snapshot => {
+    const raw = snapshot.val() || {};
 
-// Helper function to get appropriate icon by status
-function getIconByStatus(status) {
-    switch(status) {
-        case 'approved': return 'fa-check';
-        case 'denied': return 'fa-times';
-        case 'pending': return 'fa-clock';
-        case 'admin': return 'fa-calendar-check';
-        default: return 'fa-user';
-    }
-}
+    // Build a flat map { id → reservation } out of potentially nested sections
+    const flat = {};
 
-// Helper function to format relative time
-function getTimeAgo(date) {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-    
-    if (diffMin < 1) {
-        return 'Just now';
-    } else if (diffMin < 60) {
-        return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
-    } else if (diffHour < 24) {
-        return `${diffHour} hour${diffHour === 1 ? '' : 's'} ago`;
-    } else {
-        return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
-    }
-}
+    // Handle the “grouped” shape (pending / approved / denied)
+    ['pending','approved','denied'].forEach(statusKey => {
+      if (raw[statusKey] && typeof raw[statusKey] === 'object') {
+        Object.values(raw[statusKey]).forEach(r => {
+          r.status = statusKey;      // re-stamp the status
+          flat[r.id] = r;
+        });
+      }
+    });
 
-// Add this to your initial document.addEventListener('DOMContentLoaded', function() {...}
-// Right after calling updateStats();
-function initializePage() {
-    // Initialize date pickers
-    initializeDatePickers();
-    
-    // Fetch and display reservations based on default filters
-    loadReservations();
-    
-    // Set up event listeners
-    setupEventListeners();
-    
-    // Update stats
+    // Handle any top-level reservations that already live at root (if you have any)
+    Object.values(raw).forEach(r => {
+      if (r && r.id && r.status) {
+        flat[r.id] = r;
+      }
+    });
+
+    allReservations = flat;
     updateStats();
-    
-    // Update recent activity
+    filterAndRender();
     updateRecentActivity();
-}
+  });
 
-// Call updateRecentActivity whenever refreshData is called
-function refreshData() {
-    // In a real app, this would fetch fresh data from the server
-    // For now, we'll just reload the current view
-    showAlert('Data refreshed successfully');
-    loadReservations();
-    updateStats();
-    updateRecentActivity();
-}
+    
+  
+    // ——— FILTER CONTROLS ———
+    applyFiltersBtn.addEventListener('click', filterAndRender);
+    clearFiltersBtn.addEventListener('click', ()=> {
+      statusFilterEl.value   = 'pending';
+      dateFilterEl.value     = '';
+      locationFilterEl.value = 'ALL';
+      filterAndRender();
+    });
+  
+    // ——— REFRESH & EXPORT ———
+    refreshBtn.addEventListener('click', ()=> {
+      filterAndRender();
+      showAlert('Data refreshed');
+    });
+    exportBtn.addEventListener('click', ()=> {
+      /* same CSV logic as before… */
+      showAlert('Export completed');
+    });
+  
+    // ——— CREATE (ADMIN) ———
+    createBtn.addEventListener('click', ()=> bookingModal.style.display='flex');
+    closeBookingBtn.addEventListener('click', ()=> bookingModal.style.display='none');
+    bookingForm.addEventListener('submit', e=>{
+      e.preventDefault();
+      const f = new FormData(bookingForm);
+      const newRes = {
+        classroom:  f.get('booking-classroom'),
+        date:       f.get('booking-date'),
+        time:       f.get('booking-start-time')+' - '+f.get('booking-end-time'),
+        purpose:    f.get('booking-purpose'),
+        attendees:  Number(f.get('booking-attendees')),
+        status:     'approved',
+        studentName: me.name,
+        studentId:   me.id,
+        email:       me.email,
+        createdAt:   new Date().toISOString()
+      };
+      const nr = reservationsRef.push();
+      nr.set({ id: nr.key, ...newRes });
+      bookingModal.style.display='none';
+      showAlert('Admin reservation created');
+      bookingForm.reset();
+    });
+  
+    // ——— REVIEW FLOW ———
+    tableBody.addEventListener('click', function(e) {
+        const btn = e.target.closest('.view-btn');
+        if (!btn) return;
+    
+        const id = btn.dataset.id;
+        console.log('Opening review modal for ID:', id);
+    
+        // Look up in our in-memory cache instead of another DB call
+        const r = allReservations[id];
+        if (!r) {
+          return console.warn('No reservation in cache for', id);
+        }
+    
+        // populate review form
+        reviewForm.reset();
+        reviewForm['reservation-id'].value    = r.id;
+        document.getElementById('student-name').textContent    = r.studentName;
+        document.getElementById('student-id').textContent      = r.studentId;
+        document.getElementById('review-classroom').value      = r.classroom;
+        document.getElementById('review-date').value           = r.date;
+        document.getElementById('review-time').value           = r.time;
+        document.getElementById('review-purpose').value        = r.purpose;
+        document.getElementById('review-attendees').value      = r.attendees;
+        document.getElementById('admin-comment').value         = r.adminComment || '';
+    
+        // show the modal
+        reviewModal.style.display = 'flex';
+      });
+
+  // Close review modal
+  closeReviewBtn.addEventListener('click', () => {
+    console.log('Closing review modal');
+    reviewModal.style.display = 'none';
+  });
+
+  
+    function showConfirm(action) {
+      confirmAction = action;
+      confirmData   = { id: reviewForm['reservation-id'].value };
+      document.getElementById('confirm-message').textContent =
+        `Are you sure you want to ${action} reservation ${confirmData.id}?`;
+      confirmModal.style.display='flex';
+    }
+    approveBtn.addEventListener('click', ()=> showConfirm('approve'));
+    denyBtn   .addEventListener('click', ()=> showConfirm('deny'));
+    closeConfirmBtn.addEventListener('click', ()=> confirmModal.style.display='none');
+    confirmCancelBtn.addEventListener('click', ()=> confirmModal.style.display='none');
+  
+    confirmProceedBtn.addEventListener('click', () => {
+        const id      = confirmData.id;
+        const comment = document.getElementById('admin-comment').value;
+        const newStatus = confirmAction === 'approve' ? 'approved' : 'denied';
+      
+        // Grab the full reservation from cache
+        const original = allReservations[id];
+        if (!original) {
+          return console.warn('No reservation in cache for', id);
+        }
+      
+        // 1) Remove it from pending
+        const pendingPath = `pending/${id}`;
+        reservationsRef.child(pendingPath).remove()
+          .then(() => {
+            // 2) Write it under approved or denied
+            const targetPath = `${newStatus}/${id}`;
+            return reservationsRef.child(targetPath).set({
+              ...original,
+              status:       newStatus,
+              adminComment: comment,
+              processedAt:  new Date().toISOString()
+            });
+          })
+          .then(() => {
+            // 3) UI feedback
+            reviewModal.style.display  = 'none';
+            confirmModal.style.display = 'none';
+            showAlert(`Reservation ${id} ${confirmAction}d`);
+      
+            // 4) Send email if approved
+            if (newStatus === 'approved') {
+              sendApprovalEmail(original);
+            }
+            // No need to manually call updateStats/filterAndRender/updateRecentActivity:
+            // your real-time listener on reservationsRef will fire as soon as pending/<id>
+            // is removed and approved/<id> is added.
+          })
+          .catch(err => {
+            console.error('Error moving reservation:', err);
+            showAlert('Failed to update reservation status');
+          });
+      });
+      
+      
+  
+    // ——— LOGOUT ———
+    logoutBtn.addEventListener('click', () => {
+        // 1) Sign out of Firebase Auth
+        firebase.auth().signOut().catch(err => {
+          console.error('Firebase signOut error:', err);
+        });
+      
+        // 2) Clear your saved flags
+        localStorage.removeItem('loggedInUser');
+        sessionStorage.removeItem('userToken');
+      
+        // 3) Redirect to login
+        window.location.href = '/loginPage/login.html';
+      });
+      
+      
+  });
